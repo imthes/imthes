@@ -1,0 +1,5 @@
+.netlify/
+__pycache__/
+*.db
+*.log
+verification/
