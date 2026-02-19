@@ -1,3 +1,5 @@
+/* ... existing DataAdapter and Router logic ... */
+
 class DataAdapter {
   constructor() {
     this.apiBase = localStorage.getItem('tgm_api_base') || '/api';
@@ -112,10 +114,25 @@ function navigate() {
   const hash = window.location.hash || '#/home';
   const page = hash.split('/')[1] || 'home';
 
-  document.querySelectorAll('main > div').forEach(div => div.style.display = 'none');
-  const target = document.getElementById(page);
-  if (target) target.style.display = 'block';
+  // Hide all views
+  document.querySelectorAll('main > .view').forEach(div => div.style.display = 'none');
 
+  // Show target view
+  const target = document.getElementById(page);
+  if (target) {
+    target.style.display = 'block';
+
+    // Header management: Large title logic
+    const header = document.getElementById('main-header');
+    if (page === 'home') {
+       header.style.display = 'flex';
+       header.style.backgroundColor = 'transparent';
+    } else {
+       header.style.display = 'none'; // Other pages use large titles in content
+    }
+  }
+
+  // Update Tab Bar
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.toggle('active', item.getAttribute('href') === hash);
   });
@@ -149,7 +166,8 @@ function render() {
   const now = Math.floor(Date.now() / 1000);
 
   // Home: Balance
-  document.getElementById('balance-display').textContent = currentState.balance;
+  const balanceEl = document.getElementById('balance-display');
+  if (balanceEl) balanceEl.textContent = currentState.balance.toLocaleString();
 
   // Home: Chat Card
   const chatNext = currentState.chat.lastRewardTs + currentState.chat.cooldownSec;
@@ -157,55 +175,62 @@ function render() {
   const chatStatus = document.getElementById('chat-status');
   const chatBtn = document.getElementById('chat-btn');
 
-  if (chatDiff <= 0) {
-      chatStatus.textContent = 'Ready';
-      chatStatus.className = 'status-chip ready';
-      chatBtn.disabled = false;
-      chatBtn.textContent = 'Go to Chat';
-  } else {
-      chatStatus.textContent = `Next in ${formatTime(chatDiff)}`;
-      chatStatus.className = 'status-chip';
-      chatBtn.disabled = true;
-      chatBtn.textContent = `Wait ${formatTime(chatDiff)}`;
+  if (chatStatus && chatBtn) {
+      if (chatDiff <= 0) {
+          chatStatus.textContent = 'Ready';
+          chatStatus.className = 'status-chip ready';
+          chatBtn.disabled = false;
+          chatBtn.textContent = 'Go to Chat';
+      } else {
+          chatStatus.textContent = `Next in ${formatTime(chatDiff)}`;
+          chatStatus.className = 'status-chip';
+          chatBtn.disabled = true;
+          chatBtn.textContent = `Wait ${formatTime(chatDiff)}`;
+      }
   }
 
   // Home: Miner Card
   const minerStatus = document.getElementById('miner-status');
   const minerBtn = document.getElementById('miner-btn');
 
-  if (currentState.miner.status === 'idle') {
-      minerStatus.textContent = 'Idle';
-      minerBtn.textContent = 'Start Mining';
-      minerBtn.disabled = false;
-      minerBtn.onclick = async () => {
-          currentState = await adapter.minerStart();
-          render();
-      };
-  } else if (currentState.miner.status === 'mining') {
-      const miningLeft = currentState.miner.sessionEndTs - now;
-      if (miningLeft > 0) {
-          minerStatus.textContent = `Mining • ${formatTime(miningLeft)}`;
-          minerBtn.textContent = 'Mining...';
-          minerBtn.disabled = true;
-      } else {
-          // Claimable
-          currentState.miner.status = 'claimable'; // Optimistic update
-          render();
+  if (minerStatus && minerBtn) {
+      if (currentState.miner.status === 'idle') {
+          minerStatus.textContent = 'Idle';
+          minerBtn.textContent = 'Start Mining';
+          minerBtn.disabled = false;
+          minerBtn.onclick = async () => {
+              currentState = await adapter.minerStart();
+              render();
+          };
+      } else if (currentState.miner.status === 'mining') {
+          const miningLeft = currentState.miner.sessionEndTs - now;
+          if (miningLeft > 0) {
+              minerStatus.textContent = `Mining • ${formatTime(miningLeft)}`;
+              minerBtn.textContent = 'Mining...';
+              minerBtn.disabled = true;
+          } else {
+              // Claimable
+              currentState.miner.status = 'claimable'; // Optimistic update
+              render();
+          }
+      } else if (currentState.miner.status === 'claimable') {
+          minerStatus.textContent = 'Claim Ready';
+          minerBtn.textContent = 'Claim Reward';
+          minerBtn.disabled = false;
+          minerBtn.onclick = async () => {
+              currentState = await adapter.minerClaim();
+              render();
+          };
       }
-  } else if (currentState.miner.status === 'claimable') {
-      minerStatus.textContent = 'Claim Ready';
-      minerBtn.textContent = 'Claim Reward';
-      minerBtn.disabled = false;
-      minerBtn.onclick = async () => {
-          currentState = await adapter.minerClaim();
-          render();
-      };
   }
 
   // Home: Tasks Row
-  document.getElementById('tasks-progress').textContent = `${currentState.tasks.doneToday}/${currentState.tasks.totalToday}`;
+  const tasksProgress = document.getElementById('tasks-progress');
+  if (tasksProgress) {
+      tasksProgress.textContent = `${currentState.tasks.doneToday}/${currentState.tasks.totalToday}`;
+  }
 
-  // Shop Render (Simple List)
+  // Shop Render (iOS List)
   const shopList = document.getElementById('shop-list');
   if (shopList && currentState.shop.items) {
       shopList.innerHTML = '';
@@ -217,14 +242,14 @@ function render() {
                 <h4>${item.name}</h4>
                 <div class="item-price">${item.price} TGM</div>
             </div>
-            <button class="cta-btn" style="width: auto;">Buy</button>
+            <button class="spend-btn" style="background: rgba(0,122,255,0.2); color: #007aff;">Buy</button>
           `;
           const btn = div.querySelector('button');
           btn.onclick = async () => {
               if (currentState.balance >= item.price) {
                   currentState = await adapter.shopBuy(item.id);
                   render();
-                  alert('Bought ' + item.name);
+                  alert('Purchased ' + item.name);
               } else {
                   alert('Not enough coins');
               }

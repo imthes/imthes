@@ -2,15 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TGM Coin</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      /* Icon fonts simulation */
+      .nav-icon {
+        font-family: -apple-system, sans-serif; /* Fallback */
+      }
+    </style>
 </head>
 <body>
     <div id="app">
-        <!-- Header -->
-        <header>
+        <!-- Header (Dynamic) -->
+        <header id="main-header">
             <div class="brand">TGM Coin</div>
             <button class="profile-btn">👤</button>
         </header>
@@ -20,92 +26,100 @@
             <!-- Home Screen -->
             <div id="home" class="view">
                 <div class="balance-hero">
+                    <div class="balance-sub">Total Balance</div>
                     <div class="balance-amount" id="balance-display">0</div>
                     <div class="balance-sub">Today +0 • Streak 1d</div>
-                    <a href="#/shop" class="spend-link">Spend →</a>
+                    <button class="spend-btn" onclick="window.location.hash='#/shop'">Spend →</button>
                 </div>
 
+                <h2>Actions</h2>
                 <!-- Chat Card -->
                 <div class="card">
-                    <div class="card-header">
-                        <h3>Chat</h3>
+                    <div class="list-item" style="border:none; padding:0; margin-bottom:12px; background:transparent;">
+                        <div class="item-info">
+                            <h3>Chat</h3>
+                            <div class="item-price">Reward max 1/min</div>
+                        </div>
                         <span class="status-chip" id="chat-status">Ready</span>
                     </div>
-                    <p style="font-size: 0.8rem; color: #888;">Reward max 1/min</p>
                     <button class="cta-btn" id="chat-btn">Go to Chat</button>
                 </div>
 
                 <!-- Miner Card -->
                 <div class="card">
-                    <div class="card-header">
-                        <h3>Miner</h3>
+                    <div class="list-item" style="border:none; padding:0; margin-bottom:12px; background:transparent;">
+                        <div class="item-info">
+                            <h3>Miner</h3>
+                            <div class="item-price">Passive income</div>
+                        </div>
                         <span class="status-chip" id="miner-status">Idle</span>
                     </div>
-                    <button class="cta-btn" id="miner-btn">Start</button>
+                    <button class="cta-btn" id="miner-btn">Start Mining</button>
                 </div>
 
                 <!-- Tasks Row -->
-                <div class="card daily-row" onclick="window.location.hash='#/tasks'">
+                <div class="card" onclick="window.location.hash='#/tasks'" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <strong>Today Goal</strong><br>
-                        <span style="font-size: 0.8rem; color: #aaa;">+Boost on completion</span>
+                        <h3>Today's Goal</h3>
+                        <div class="item-price" style="font-size: 13px;">+Boost on completion</div>
                     </div>
                     <div style="text-align: right;">
-                        <span id="tasks-progress">0/3</span> done<br>
-                        <span style="color: var(--accent-color);">View Tasks →</span>
+                        <span id="tasks-progress" style="font-weight: 600; color: var(--accent-color);">0/3</span>
+                        <div style="font-size: 13px; color: var(--text-secondary);">View All ›</div>
                     </div>
                 </div>
             </div>
 
             <!-- Earn Screen -->
             <div id="earn" class="view" style="display: none;">
-                <h2>Earn Coins</h2>
+                <h1 class="large-title">Earn</h1>
                 <div class="card">
                     <h3>Chat Rewards</h3>
-                    <ul>
-                        <li>Send a message in the group</li>
-                        <li>Get coins instantly</li>
-                        <li>Cooldown: 1 minute</li>
-                    </ul>
-                    <button class="cta-btn">Check Status</button>
+                    <p class="item-price" style="margin-top: 8px; line-height: 1.4;">
+                        Send a message in the group to earn coins instantly. The cooldown is 1 minute between rewards.
+                    </p>
+                    <button class="cta-btn" style="margin-top: 16px;">Check Status</button>
                 </div>
             </div>
 
             <!-- Tasks Screen -->
             <div id="tasks" class="view" style="display: none;">
-                <h2>Daily Tasks</h2>
-                <div class="card">
+                <h1 class="large-title">Tasks</h1>
+                <h2>Daily</h2>
+                <div class="list-group">
                     <div class="list-item">
                         <div class="item-info">
                             <h4>Daily Login</h4>
                             <div class="item-price">+100 TGM</div>
                         </div>
-                        <button class="cta-btn" style="width: auto;">Claim</button>
+                        <button class="spend-btn" style="background: var(--accent-color); color: white; border-radius: 14px;">Claim</button>
                     </div>
                     <div class="list-item">
                         <div class="item-info">
                             <h4>Send 10 Messages</h4>
                             <div class="item-price">+50 TGM</div>
                         </div>
-                        <button class="cta-btn" style="width: auto;" disabled>0/10</button>
+                        <button class="spend-btn" disabled style="background: transparent; color: var(--text-secondary);">0/10</button>
                     </div>
                 </div>
             </div>
 
             <!-- Shop Screen -->
             <div id="shop" class="view" style="display: none;">
-                <h2>Shop</h2>
-                <div id="shop-list">
+                <h1 class="large-title">Shop</h1>
+                <h2>Boosters</h2>
+                <div id="shop-list" class="list-group">
                     <!-- Populated by JS -->
                 </div>
             </div>
 
             <!-- Friends Screen -->
             <div id="friends" class="view" style="display: none;">
-                <h2>Friends</h2>
-                <div class="card" style="text-align: center;">
+                <h1 class="large-title">Friends</h1>
+                <div class="card" style="text-align: center; padding: 40px 20px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
                     <h3>Invite a Friend</h3>
-                    <p>Get a boost when they become active!</p>
+                    <p class="item-price" style="margin: 10px 0 24px 0;">Get a boost when they become active!</p>
                     <button class="cta-btn">Copy Invite Link</button>
                 </div>
             </div>
@@ -114,23 +128,23 @@
         <!-- Bottom Navigation -->
         <nav>
             <a href="#/home" class="nav-item active">
-                <span>🏠</span>
+                <div class="nav-icon">🏠</div>
                 <span>Home</span>
             </a>
             <a href="#/earn" class="nav-item">
-                <span>💰</span>
+                <div class="nav-icon">💰</div>
                 <span>Earn</span>
             </a>
             <a href="#/tasks" class="nav-item">
-                <span>✅</span>
+                <div class="nav-icon">✅</div>
                 <span>Tasks</span>
             </a>
             <a href="#/shop" class="nav-item">
-                <span>🛒</span>
+                <div class="nav-icon">🛒</div>
                 <span>Shop</span>
             </a>
             <a href="#/friends" class="nav-item">
-                <span>👥</span>
+                <div class="nav-icon">👥</div>
                 <span>Friends</span>
             </a>
         </nav>
