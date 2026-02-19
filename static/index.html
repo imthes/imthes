@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TGM Coin</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <div class="brand">TGM Coin</div>
+            <button class="profile-btn">👤</button>
+        </header>
+
+        <!-- Main Content Area -->
+        <main>
+            <!-- Home Screen -->
+            <div id="home" class="view">
+                <div class="balance-hero">
+                    <div class="balance-amount" id="balance-display">0</div>
+                    <div class="balance-sub">Today +0 • Streak 1d</div>
+                    <a href="#/shop" class="spend-link">Spend →</a>
+                </div>
+
+                <!-- Chat Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Chat</h3>
+                        <span class="status-chip" id="chat-status">Ready</span>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #888;">Reward max 1/min</p>
+                    <button class="cta-btn" id="chat-btn">Go to Chat</button>
+                </div>
+
+                <!-- Miner Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Miner</h3>
+                        <span class="status-chip" id="miner-status">Idle</span>
+                    </div>
+                    <button class="cta-btn" id="miner-btn">Start</button>
+                </div>
+
+                <!-- Tasks Row -->
+                <div class="card daily-row" onclick="window.location.hash='#/tasks'">
+                    <div>
+                        <strong>Today Goal</strong><br>
+                        <span style="font-size: 0.8rem; color: #aaa;">+Boost on completion</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span id="tasks-progress">0/3</span> done<br>
+                        <span style="color: var(--accent-color);">View Tasks →</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Earn Screen -->
+            <div id="earn" class="view" style="display: none;">
+                <h2>Earn Coins</h2>
+                <div class="card">
+                    <h3>Chat Rewards</h3>
+                    <ul>
+                        <li>Send a message in the group</li>
+                        <li>Get coins instantly</li>
+                        <li>Cooldown: 1 minute</li>
+                    </ul>
+                    <button class="cta-btn">Check Status</button>
+                </div>
+            </div>
+
+            <!-- Tasks Screen -->
+            <div id="tasks" class="view" style="display: none;">
+                <h2>Daily Tasks</h2>
+                <div class="card">
+                    <div class="list-item">
+                        <div class="item-info">
+                            <h4>Daily Login</h4>
+                            <div class="item-price">+100 TGM</div>
+                        </div>
+                        <button class="cta-btn" style="width: auto;">Claim</button>
+                    </div>
+                    <div class="list-item">
+                        <div class="item-info">
+                            <h4>Send 10 Messages</h4>
+                            <div class="item-price">+50 TGM</div>
+                        </div>
+                        <button class="cta-btn" style="width: auto;" disabled>0/10</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop Screen -->
+            <div id="shop" class="view" style="display: none;">
+                <h2>Shop</h2>
+                <div id="shop-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Friends Screen -->
+            <div id="friends" class="view" style="display: none;">
+                <h2>Friends</h2>
+                <div class="card" style="text-align: center;">
+                    <h3>Invite a Friend</h3>
+                    <p>Get a boost when they become active!</p>
+                    <button class="cta-btn">Copy Invite Link</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav>
+            <a href="#/home" class="nav-item active">
+                <span>🏠</span>
+                <span>Home</span>
+            </a>
+            <a href="#/earn" class="nav-item">
+                <span>💰</span>
+                <span>Earn</span>
+            </a>
+            <a href="#/tasks" class="nav-item">
+                <span>✅</span>
+                <span>Tasks</span>
+            </a>
+            <a href="#/shop" class="nav-item">
+                <span>🛒</span>
+                <span>Shop</span>
+            </a>
+            <a href="#/friends" class="nav-item">
+                <span>👥</span>
+                <span>Friends</span>
+            </a>
+        </nav>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
