@@ -41,10 +41,14 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    # Users table
+    # Users table - Added energy columns
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         balance INTEGER DEFAULT 0,
+        energy INTEGER DEFAULT 500,
+        max_energy INTEGER DEFAULT 500,
+        last_energy_ts INTEGER DEFAULT 0,
+        tap_level INTEGER DEFAULT 1,
         last_reward_ts INTEGER DEFAULT 0,
         last_daily_ts INTEGER DEFAULT 0,
         miner_status TEXT DEFAULT 'idle',
@@ -71,6 +75,9 @@ def get_user_state(user_id):
     # Default State Structure
     state = {
         'balance': 0,
+        'energy': 500,
+        'maxEnergy': 500,
+        'tapLevel': 1,
         'chat': {'lastRewardTs': 0, 'cooldownSec': 60},
         'daily': {'lastDailyTs': 0, 'cooldownSec': 86400},
         'miner': {'status': 'idle', 'sessionEndTs': 0, 'lastClaimTs': 0},
@@ -83,14 +90,35 @@ def get_user_state(user_id):
     if row is None:
         # Create new user
         invite_code = f"user_{user_id}_{int(time.time())}"
-        c.execute('''INSERT INTO users (id, invite_code) VALUES (?, ?)''', (user_id, invite_code))
+        c.execute('''INSERT INTO users (id, invite_code, last_energy_ts) VALUES (?, ?, ?)''', (user_id, invite_code, int(time.time())))
         conn.commit()
         state['friends']['inviteCode'] = invite_code
         conn.close()
         return state
 
     # Parse JSON fields and populate state
+
+    # Energy Regen Logic (Server Side)
+    now = int(time.time())
+    last_energy_ts = row['last_energy_ts']
+    current_energy = row['energy']
+    max_energy = row['max_energy']
+
+    # Regen 1 energy per second
+    elapsed = now - last_energy_ts
+    if elapsed > 0 and current_energy < max_energy:
+        regen = elapsed
+        new_energy = min(max_energy, current_energy + regen)
+        # Update DB lazily
+        c.execute('UPDATE users SET energy = ?, last_energy_ts = ? WHERE id = ?', (new_energy, now, user_id))
+        conn.commit()
+        current_energy = new_energy
+
     state['balance'] = row['balance']
+    state['energy'] = current_energy
+    state['maxEnergy'] = max_energy
+    state['tapLevel'] = row['tap_level']
+
     state['chat']['lastRewardTs'] = row['last_reward_ts']
     state['daily']['lastDailyTs'] = row['last_daily_ts']
 
@@ -119,6 +147,35 @@ def get_user_state(user_id):
     conn.close()
     return state
 
+def update_tap(user_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT balance, energy, max_energy, last_energy_ts, tap_level FROM users WHERE id = ?', (user_id,))
+    row = c.fetchone()
+
+    if row:
+        now = int(time.time())
+        balance = row['balance']
+        energy = row['energy']
+        max_energy = row['max_energy']
+        last_ts = row['last_energy_ts']
+        tap_level = row['tap_level']
+
+        # Calculate regen first
+        elapsed = now - last_ts
+        if elapsed > 0:
+            energy = min(max_energy, energy + elapsed)
+
+        if energy >= 1:
+            new_energy = energy - 1
+            new_balance = balance + (1 * tap_level)
+            c.execute('UPDATE users SET balance = ?, energy = ?, last_energy_ts = ? WHERE id = ?',
+                      (new_balance, new_energy, now, user_id))
+            conn.commit()
+
+    conn.close()
+    return get_user_state(user_id)
+
 def update_miner_start(user_id):
     # For demo, mining takes 60 seconds
     session_end = int(time.time()) + 60
@@ -138,8 +195,6 @@ def update_miner_claim(user_id):
 
     if row and row['miner_status'] == 'mining':
         now = time.time()
-        # Allow claim if time is up OR cheat/demo
-        # In a real app we'd strict check now >= session_end
         if True: # Simulating successful mining session logic for MVP
             base_reward = 10
 
@@ -173,7 +228,7 @@ def buy_item(user_id, item_id):
 
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT balance, inventory_json FROM users WHERE id = ?', (user_id,))
+    c.execute('SELECT balance, inventory_json, max_energy, tap_level FROM users WHERE id = ?', (user_id,))
     row = c.fetchone()
 
     if row:
@@ -190,8 +245,23 @@ def buy_item(user_id, item_id):
             new_balance = current_balance - price
             inventory.append(item_id)
 
-            c.execute('UPDATE users SET balance = ?, inventory_json = ? WHERE id = ?',
-                      (new_balance, json.dumps(inventory), user_id))
+            # APPLY BOOST LOGIC
+            extra_sql = ""
+            args = []
+
+            if item_id == 'boost_capacity':
+                new_max = row['max_energy'] + 500
+                extra_sql = ", max_energy = ?"
+                args.append(new_max)
+            elif item_id == 'boost_multitap':
+                new_tap = row['tap_level'] + 1
+                extra_sql = ", tap_level = ?"
+                args.append(new_tap)
+
+            query = f'UPDATE users SET balance = ?, inventory_json = ? {extra_sql} WHERE id = ?'
+            all_args = [new_balance, json.dumps(inventory)] + args + [user_id]
+
+            c.execute(query, tuple(all_args))
             conn.commit()
 
     conn.close()

@@ -20,6 +20,13 @@ class DataAdapter {
             if (!data.boosts) {
                 data.boosts = def.boosts;
             }
+            // Patch Energy
+            if (typeof data.energy === 'undefined') {
+                data.energy = def.energy;
+                data.maxEnergy = def.maxEnergy;
+                data.lastEnergyTs = def.lastEnergyTs;
+                data.tapLevel = def.tapLevel;
+            }
             return data;
         }
     } catch(e) {}
@@ -39,7 +46,17 @@ class DataAdapter {
       this.saveLocalState(data);
       return data;
     } catch (e) {
-      console.warn('Offline mode (State):', e);
+      // console.warn('Offline mode (State):', e);
+      // Offline Regen Calculation
+      if (this.state) {
+          const now = Math.floor(Date.now() / 1000);
+          const elapsed = now - (this.state.lastEnergyTs || now);
+          if (elapsed > 0 && this.state.energy < this.state.maxEnergy) {
+              this.state.energy = Math.min(this.state.maxEnergy, this.state.energy + elapsed);
+              this.state.lastEnergyTs = now;
+              this.saveLocalState(this.state);
+          }
+      }
       return this.state || this.getDefaultState();
     }
   }
@@ -126,6 +143,14 @@ class DataAdapter {
               state.balance -= item.price;
               state.boosts.inventory.push(itemId);
 
+              // APPLY LOGIC
+              if (itemId === 'boost_capacity') {
+                  state.maxEnergy += 500;
+                  state.energy = state.maxEnergy; // Refill on upgrade
+              } else if (itemId === 'boost_multitap') {
+                  state.tapLevel += 1;
+              }
+
               triggerBoostAnimation(); // Particle burst
               showSuccessModal(item.name + ' Purchased!');
 
@@ -138,6 +163,10 @@ class DataAdapter {
   getDefaultState() {
     return {
       balance: 0,
+      energy: 500,
+      maxEnergy: 500,
+      tapLevel: 1,
+      lastEnergyTs: Math.floor(Date.now() / 1000),
       chat: { lastRewardTs: 0, cooldownSec: 60 },
       daily: { lastDailyTs: 0, cooldownSec: 86400 },
       miner: { status: 'idle', sessionEndTs: 0, lastClaimTs: 0 },
@@ -231,12 +260,52 @@ async function init() {
   if (!currentState) currentState = adapter.getDefaultState(); // Fallback
   navigate();
 
-  // Tick loop
+  // Tick loop (1s)
   setInterval(() => {
-    if (!document.hidden) {
+    if (!document.hidden && currentState) {
+        // Regen Energy
+        const now = Math.floor(Date.now() / 1000);
+        if (currentState.energy < currentState.maxEnergy) {
+            currentState.energy = Math.min(currentState.maxEnergy, currentState.energy + 1);
+            currentState.lastEnergyTs = now;
+            // Only save every few seconds or on exit in real app, but for now:
+            adapter.saveLocalState(currentState);
+        }
+
         render();
     }
   }, 1000);
+}
+
+function handleTap(e) {
+    if (!currentState) return;
+
+    // Check Energy
+    if (currentState.energy > 0) {
+        // Update State
+        currentState.energy -= 1;
+        const gain = currentState.tapLevel || 1;
+        currentState.balance += gain;
+
+        // Visuals
+        triggerTapAnimation(e, gain);
+
+        // Haptic (if available in Telegram WebApp)
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+             window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+
+        // Save (debouncing would be better, but simple for now)
+        adapter.saveLocalState(currentState);
+        render();
+    } else {
+        // Shake animation for no energy
+        const tapArea = document.getElementById('tap-area');
+        if (tapArea) {
+             tapArea.style.animation = 'shake 0.3s';
+             setTimeout(() => tapArea.style.animation = '', 300);
+        }
+    }
 }
 
 function render() {
@@ -247,6 +316,26 @@ function render() {
   // --- HOME SCREEN ---
   const balanceEl = document.getElementById('balance-display');
   if (balanceEl) balanceEl.textContent = currentState.balance.toLocaleString();
+
+  // Energy Bar
+  const energyVal = document.getElementById('energy-val');
+  const energyBar = document.getElementById('energy-bar');
+  if (energyVal && energyBar) {
+      energyVal.textContent = `${Math.floor(currentState.energy)}/${currentState.maxEnergy}`;
+      const pct = (currentState.energy / currentState.maxEnergy) * 100;
+      energyBar.style.width = `${pct}%`;
+  }
+
+  // Tap Area Binding
+  const tapArea = document.getElementById('tap-area');
+  if (tapArea && !tapArea.onclick) {
+      tapArea.onclick = handleTap;
+      // Also prevent double-tap zoom issues
+      tapArea.addEventListener('touchstart', function(e) {
+          e.preventDefault(); // prevents standard touch behavior like scroll/zoom
+          handleTap(e.touches[0]); // pass the touch point
+      }, {passive: false});
+  }
 
   // Miner Card Logic
   const minerStatus = document.getElementById('miner-status');
@@ -350,13 +439,39 @@ function render() {
 
 // Helper: Icons (SF Symbols approximation)
 function getIcon(name) {
-    if (name === 'bolt') return '⚡️';
-    if (name === 'battery') return '🔋';
-    if (name === 'hand.tap') return '👆';
+    if (name === 'bolt') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #FFD60A"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>';
+    if (name === 'battery') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #32D74B"><rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect><line x1="23" y1="13" x2="23" y2="11"></line></svg>';
+    if (name === 'hand.tap') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0A84FF"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>';
     return '📦';
 }
 
 // --- ANIMATION SYSTEM ---
+
+function triggerTapAnimation(event, amount) {
+    const floatText = document.createElement('div');
+    floatText.className = 'burst-text';
+    floatText.textContent = `+${amount}`;
+
+    // Position at click/touch
+    let x = event.clientX;
+    let y = event.clientY;
+
+    // Fallback for center if no event coords (unlikely)
+    if (!x || !y) {
+        x = window.innerWidth / 2;
+        y = window.innerHeight / 2;
+    }
+
+    floatText.style.position = 'fixed';
+    floatText.style.left = x + 'px';
+    floatText.style.top = y + 'px';
+    floatText.style.pointerEvents = 'none';
+    floatText.style.zIndex = '9999';
+    floatText.style.fontSize = '32px'; // Larger for tap
+
+    document.body.appendChild(floatText);
+    setTimeout(() => floatText.remove(), 1000);
+}
 
 // 1. Particle Burst (More Particles)
 function triggerBoostAnimation(amount) {

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TGM Coin</title>
-    <link rel="stylesheet" href="style.css?v=2.3">
-    <link rel="stylesheet" href="premium.css?v=2.3">
+    <link rel="stylesheet" href="style.css?v=2.4">
+    <link rel="stylesheet" href="premium.css?v=2.4">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       /* Icon fonts simulation */
@@ -39,8 +39,26 @@
                     <div class="balance-hero">
                         <div class="balance-sub">Total Balance</div>
                         <div class="balance-amount" id="balance-display">0</div>
-                        <div class="balance-sub">Today +0 • Streak 1d</div>
-                        <button class="btn-tinted-pill" onclick="window.location.hash='#/shop'">
+
+                        <!-- Tap Area -->
+                        <div id="tap-area" class="tap-coin">
+                            <div class="coin-inner">
+                                <span style="font-size: 48px;">🪙</span>
+                            </div>
+                        </div>
+
+                        <!-- Energy Bar -->
+                        <div class="energy-container">
+                            <div class="energy-info">
+                                <span class="energy-label">Energy</span>
+                                <span class="energy-val" id="energy-val">500/500</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="energy-bar" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <button class="btn-tinted-pill" onclick="window.location.hash='#/shop'" style="margin-top: 16px;">
                           <span>Spend</span>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </button>
@@ -208,6 +226,6 @@
             </nav>
         </div>
     </div>
-    <script src="app.js?v=2.3"></script>
+    <script src="app.js?v=2.4"></script>
 </body>
 </html>

@@ -122,3 +122,85 @@
     80% { transform: scale(1.2); }
     100% { transform: scale(1); }
 }
+
+/* --- TAPPING & ENERGY --- */
+.tap-coin {
+    width: 180px;
+    height: 180px;
+    margin: 24px auto;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFD60A, #FF9F0A);
+    box-shadow:
+        0 10px 30px rgba(255, 159, 10, 0.4),
+        inset 0 4px 10px rgba(255,255,255,0.4),
+        inset 0 -4px 10px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s cubic-bezier(0.3, 0, 0.4, 1.5), box-shadow 0.1s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.tap-coin:active {
+    transform: scale(0.92);
+    box-shadow:
+        0 4px 15px rgba(255, 159, 10, 0.3),
+        inset 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.coin-inner {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF9F0A, #d48806);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.energy-container {
+    margin: 0 auto 16px;
+    max-width: 300px;
+    text-align: left;
+}
+
+.energy-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.progress-bar-bg {
+    height: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #FFD60A, #32D74B);
+    border-radius: 4px;
+    transition: width 0.3s ease-out;
+    box-shadow: 0 0 10px rgba(50, 215, 75, 0.4);
+}
+
+.burst-text {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    animation: floatUp 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes floatUp {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    20% { transform: translate(-50%, -80%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -200%) scale(1); opacity: 0; }
+}
