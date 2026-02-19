@@ -4,7 +4,31 @@ class DataAdapter {
   constructor() {
     this.apiBase = localStorage.getItem('tgm_api_base') || '/api';
     this.uid = localStorage.getItem('tgm_uid') || 'demo_user';
-    this.state = null;
+    this.state = this.loadLocalState();
+  }
+
+  loadLocalState() {
+    try {
+        const stored = localStorage.getItem('tgm_state');
+        if (stored) {
+            const data = JSON.parse(stored);
+            // Patch missing items in old state
+            const def = this.getDefaultState();
+            if (!data.shop || !data.shop.items || data.shop.items.length === 0) {
+                data.shop = def.shop;
+            }
+            if (!data.boosts) {
+                data.boosts = def.boosts;
+            }
+            return data;
+        }
+    } catch(e) {}
+    return null;
+  }
+
+  saveLocalState(state) {
+    this.state = state;
+    localStorage.setItem('tgm_state', JSON.stringify(state));
   }
 
   async fetchState() {
@@ -12,10 +36,10 @@ class DataAdapter {
       const res = await fetch(`${this.apiBase}/state?uid=${this.uid}`);
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
-      this.state = data;
+      this.saveLocalState(data);
       return data;
     } catch (e) {
-      console.warn('Offline mode:', e);
+      console.warn('Offline mode (State):', e);
       return this.state || this.getDefaultState();
     }
   }
@@ -29,11 +53,16 @@ class DataAdapter {
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
-      this.state = data;
+      this.saveLocalState(data);
       return data;
     } catch (e) {
       console.warn('Start failed offline', e);
-      return this.state;
+      // Mock offline
+      const state = { ...this.state };
+      state.miner.status = 'mining';
+      state.miner.sessionEndTs = Math.floor(Date.now() / 1000) + 60;
+      this.saveLocalState(state);
+      return state;
     }
   }
 
@@ -47,16 +76,31 @@ class DataAdapter {
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
 
-      // Trigger Animation if successful
       if (data.balance > this.state.balance) {
           triggerBoostAnimation(data.balance - this.state.balance);
       }
 
-      this.state = data;
+      this.saveLocalState(data);
       return data;
     } catch (e) {
        console.warn('Claim failed offline', e);
-       return this.state;
+       // Mock offline
+       const state = { ...this.state };
+       // Check if claimable
+       if (state.miner.status === 'mining' && Math.floor(Date.now()/1000) >= state.miner.sessionEndTs) {
+           // Calculate reward with boost
+           let reward = 10;
+           if (state.boosts.inventory.includes('boost_speed')) reward *= 2;
+
+           state.balance += reward;
+           state.miner.status = 'idle';
+           state.miner.sessionEndTs = 0;
+           state.miner.lastClaimTs = Math.floor(Date.now() / 1000);
+
+           triggerBoostAnimation(reward);
+           this.saveLocalState(state);
+       }
+       return state;
     }
   }
 
@@ -69,15 +113,25 @@ class DataAdapter {
           });
           if (!res.ok) throw new Error('API Error');
           const data = await res.json();
-          this.state = data;
-
-          // Trigger Success Modal for Boosts
+          this.saveLocalState(data);
           showSuccessModal('Boost Activated!');
-
           return data;
       } catch (e) {
           console.warn('Shop buy failed offline', e);
-          return this.state;
+          // Mock offline purchase logic
+          const state = { ...this.state };
+          const item = state.shop.items.find(i => i.id === itemId);
+
+          if (item && state.balance >= item.price && !state.boosts.inventory.includes(itemId)) {
+              state.balance -= item.price;
+              state.boosts.inventory.push(itemId);
+
+              triggerBoostAnimation(); // Particle burst
+              showSuccessModal(item.name + ' Purchased!');
+
+              this.saveLocalState(state);
+          }
+          return state;
       }
   }
 
@@ -88,8 +142,38 @@ class DataAdapter {
       daily: { lastDailyTs: 0, cooldownSec: 86400 },
       miner: { status: 'idle', sessionEndTs: 0, lastClaimTs: 0 },
       tasks: { doneToday: 0, totalToday: 3 },
-      shop: { items: [], dailyDealId: null },
-      boosts: { inventory: [], active: [] }
+      // HARDCODED SHOP ITEMS FOR OFFLINE MODE
+      shop: {
+          items: [
+            {
+                id: 'boost_speed',
+                name: '2x Mining Speed',
+                price: 100,
+                type: 'booster',
+                icon: 'bolt',
+                desc: 'Double income for 1 hour'
+            },
+            {
+                id: 'boost_capacity',
+                name: 'Energy Tank',
+                price: 250,
+                type: 'booster',
+                icon: 'battery',
+                desc: '+100 Max Energy'
+            },
+            {
+                id: 'boost_multitap',
+                name: 'Multi-Tap',
+                price: 500,
+                type: 'booster',
+                icon: 'hand.tap',
+                desc: '+1 Coin per tap'
+            }
+          ],
+          dailyDealId: 'boost_speed'
+      },
+      boosts: { inventory: [], active: [] },
+      friends: { inviteCode: 'demo', stats: { invited: 0 }, list: [] }
     };
   }
 }
@@ -144,6 +228,7 @@ function formatTime(seconds) {
 
 async function init() {
   currentState = await adapter.fetchState();
+  if (!currentState) currentState = adapter.getDefaultState(); // Fallback
   navigate();
 
   // Tick loop
@@ -209,7 +294,7 @@ function render() {
 
       currentState.shop.items.forEach(item => {
           // Check ownership
-          const owned = currentState.boosts.inventory.includes(item.id);
+          const owned = (currentState.boosts.inventory || []).includes(item.id);
 
           const div = document.createElement('div');
           // USE NEW CLASS "boost-card"
@@ -351,15 +436,3 @@ function showSuccessModal(message) {
         card.style.transform = 'scale(0.8)';
     }, 2000);
 }
-
-// Inject CSS for shake if needed (moved to premium.css, but keeping fallback)
-const style = document.createElement('style');
-style.textContent = `
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
-  100% { transform: translateX(0); }
-}
-`;
-document.head.appendChild(style);
