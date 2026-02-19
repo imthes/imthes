@@ -12,20 +12,16 @@ class DataAdapter {
         const stored = localStorage.getItem('tgm_state');
         if (stored) {
             const data = JSON.parse(stored);
-            // Patch missing items in old state
             const def = this.getDefaultState();
-            if (!data.shop || !data.shop.items || data.shop.items.length === 0) {
+            // Patch missing items
+            if (!data.shop || !data.shop.items || data.shop.items.length < 4) {
                 data.shop = def.shop;
             }
-            if (!data.boosts) {
-                data.boosts = def.boosts;
-            }
-            // Patch Energy
-            if (typeof data.energy === 'undefined') {
-                data.energy = def.energy;
-                data.maxEnergy = def.maxEnergy;
-                data.lastEnergyTs = def.lastEnergyTs;
-                data.tapLevel = def.tapLevel;
+            if (typeof data.xp === 'undefined') {
+                data.xp = def.xp;
+                data.level = def.level;
+                data.nextLevelXp = def.nextLevelXp;
+                data.isPremium = def.isPremium;
             }
             return data;
         }
@@ -46,8 +42,6 @@ class DataAdapter {
       this.saveLocalState(data);
       return data;
     } catch (e) {
-      // console.warn('Offline mode (State):', e);
-      // Offline Regen Calculation
       if (this.state) {
           const now = Math.floor(Date.now() / 1000);
           const elapsed = now - (this.state.lastEnergyTs || now);
@@ -73,8 +67,6 @@ class DataAdapter {
       this.saveLocalState(data);
       return data;
     } catch (e) {
-      console.warn('Start failed offline', e);
-      // Mock offline
       const state = { ...this.state };
       state.miner.status = 'mining';
       state.miner.sessionEndTs = Math.floor(Date.now() / 1000) + 60;
@@ -92,27 +84,18 @@ class DataAdapter {
       });
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
-
-      if (data.balance > this.state.balance) {
-          triggerBoostAnimation(data.balance - this.state.balance);
-      }
-
       this.saveLocalState(data);
       return data;
     } catch (e) {
-       console.warn('Claim failed offline', e);
-       // Mock offline
        const state = { ...this.state };
-       // Check if claimable
        if (state.miner.status === 'mining' && Math.floor(Date.now()/1000) >= state.miner.sessionEndTs) {
-           // Calculate reward with boost
            let reward = 10;
            if (state.boosts.inventory.includes('boost_speed')) reward *= 2;
+           if (state.isPremium) reward *= 2; // Module 3: Premium x2
 
            state.balance += reward;
            state.miner.status = 'idle';
            state.miner.sessionEndTs = 0;
-           state.miner.lastClaimTs = Math.floor(Date.now() / 1000);
 
            triggerBoostAnimation(reward);
            this.saveLocalState(state);
@@ -131,11 +114,9 @@ class DataAdapter {
           if (!res.ok) throw new Error('API Error');
           const data = await res.json();
           this.saveLocalState(data);
-          showSuccessModal('Boost Activated!');
+          showSuccessModal('Activated!');
           return data;
       } catch (e) {
-          console.warn('Shop buy failed offline', e);
-          // Mock offline purchase logic
           const state = { ...this.state };
           const item = state.shop.items.find(i => i.id === itemId);
 
@@ -143,15 +124,16 @@ class DataAdapter {
               state.balance -= item.price;
               state.boosts.inventory.push(itemId);
 
-              // APPLY LOGIC
               if (itemId === 'boost_capacity') {
                   state.maxEnergy += 500;
-                  state.energy = state.maxEnergy; // Refill on upgrade
+                  state.energy = state.maxEnergy;
               } else if (itemId === 'boost_multitap') {
                   state.tapLevel += 1;
+              } else if (itemId === 'item_premium') {
+                  state.isPremium = true;
               }
 
-              triggerBoostAnimation(); // Particle burst
+              triggerBoostAnimation();
               showSuccessModal(item.name + ' Purchased!');
 
               this.saveLocalState(state);
@@ -160,18 +142,59 @@ class DataAdapter {
       }
   }
 
+  completeTask(taskId, rewardXp, rewardCoins) {
+      const state = { ...this.state };
+      if (!state.tasks.doneList) state.tasks.doneList = [];
+
+      if (!state.tasks.doneList.includes(taskId)) {
+          state.tasks.doneList.push(taskId);
+          state.xp += rewardXp;
+          state.balance += rewardCoins;
+
+          // Module 1: Check Level Up (Simplified Thresholds)
+          // 1->50, 2->250, 3->500, 4->600, 5->650, 10->1050
+          const thresholds = [
+              {xp: 50, lvl: 1, reward: 5},
+              {xp: 250, lvl: 2, reward: 1},
+              {xp: 500, lvl: 3, reward: 1},
+              {xp: 600, lvl: 4, reward: 1},
+              {xp: 650, lvl: 5, reward: 10},
+              {xp: 1050, lvl: 10, reward: 100}, // Big jump for demo
+          ];
+
+          let newLevel = state.level;
+          for (let t of thresholds) {
+              if (state.xp >= t.xp && state.level < t.lvl) {
+                  newLevel = t.lvl;
+                  state.balance += t.reward; // Level Up Reward
+                  showSuccessModal(`Level Up! Lvl ${newLevel}`);
+              }
+          }
+          state.level = newLevel;
+
+          let msg = `+${rewardXp} XP`;
+          if (rewardCoins > 0) msg += `, +${rewardCoins} TGM`;
+          triggerBoostAnimation(msg);
+          this.saveLocalState(state);
+      }
+      return state;
+  }
+
   getDefaultState() {
     return {
       balance: 0,
       energy: 500,
       maxEnergy: 500,
       tapLevel: 1,
+      xp: 0,
+      level: 1,
+      nextLevelXp: 50,
+      isPremium: false,
       lastEnergyTs: Math.floor(Date.now() / 1000),
       chat: { lastRewardTs: 0, cooldownSec: 60 },
       daily: { lastDailyTs: 0, cooldownSec: 86400 },
       miner: { status: 'idle', sessionEndTs: 0, lastClaimTs: 0 },
-      tasks: { doneToday: 0, totalToday: 3 },
-      // HARDCODED SHOP ITEMS FOR OFFLINE MODE
+      tasks: { doneToday: 0, totalToday: 3, doneList: [] },
       shop: {
           items: [
             {
@@ -188,7 +211,7 @@ class DataAdapter {
                 price: 250,
                 type: 'booster',
                 icon: 'battery',
-                desc: '+100 Max Energy'
+                desc: '+500 Max Energy'
             },
             {
                 id: 'boost_multitap',
@@ -197,6 +220,14 @@ class DataAdapter {
                 type: 'booster',
                 icon: 'hand.tap',
                 desc: '+1 Coin per tap'
+            },
+            {
+                id: 'item_premium',
+                name: 'Premium Status',
+                price: 100,
+                type: 'subscription',
+                icon: 'crown',
+                desc: 'x2 Multiplier on ALL Earnings'
             }
           ],
           dailyDealId: 'boost_speed'
@@ -213,19 +244,16 @@ let currentState = null;
 // Routing
 function navigate() {
   const hash = window.location.hash || '#/home';
-  const page = hash.substring(2) || 'home'; // remove #/
+  const page = hash.substring(2) || 'home';
 
-  // Hide all views
   document.querySelectorAll('main > .view').forEach(div => div.style.display = 'none');
 
-  // Show target view
   const target = document.getElementById(page);
   if (target) {
     target.style.display = 'block';
     target.style.animation = 'fadeIn 0.3s ease-out';
   }
 
-  // Header management
   const header = document.querySelector('header');
   if (page === 'home') {
        if(header) header.style.display = 'flex';
@@ -233,21 +261,17 @@ function navigate() {
        if(header) header.style.display = 'none';
   }
 
-  // Update Tab Bar
   document.querySelectorAll('.nav-item').forEach(item => {
-    // href="#/home" matches current hash
     const href = item.getAttribute('href');
     item.classList.toggle('active', href === hash);
   });
 
-  // Re-render to update UI for the new page
   render();
 }
 
 window.addEventListener('hashchange', navigate);
 window.addEventListener('load', init);
 
-// Logic
 function formatTime(seconds) {
   if (seconds <= 0) return '00:00';
   const m = Math.floor(seconds / 60);
@@ -257,21 +281,17 @@ function formatTime(seconds) {
 
 async function init() {
   currentState = await adapter.fetchState();
-  if (!currentState) currentState = adapter.getDefaultState(); // Fallback
+  if (!currentState) currentState = adapter.getDefaultState();
   navigate();
 
-  // Tick loop (1s)
   setInterval(() => {
     if (!document.hidden && currentState) {
-        // Regen Energy
         const now = Math.floor(Date.now() / 1000);
         if (currentState.energy < currentState.maxEnergy) {
             currentState.energy = Math.min(currentState.maxEnergy, currentState.energy + 1);
             currentState.lastEnergyTs = now;
-            // Only save every few seconds or on exit in real app, but for now:
             adapter.saveLocalState(currentState);
         }
-
         render();
     }
   }, 1000);
@@ -280,32 +300,33 @@ async function init() {
 function handleTap(e) {
     if (!currentState) return;
 
-    // Check Energy
     if (currentState.energy > 0) {
-        // Update State
         currentState.energy -= 1;
-        const gain = currentState.tapLevel || 1;
+        let gain = currentState.tapLevel || 1;
+        if (currentState.isPremium) gain *= 2; // Premium Multiplier
+
         currentState.balance += gain;
 
-        // Visuals
         triggerTapAnimation(e, gain);
 
-        // Haptic (if available in Telegram WebApp)
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
              window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
         }
 
-        // Save (debouncing would be better, but simple for now)
         adapter.saveLocalState(currentState);
         render();
     } else {
-        // Shake animation for no energy
         const tapArea = document.getElementById('tap-area');
         if (tapArea) {
              tapArea.style.animation = 'shake 0.3s';
              setTimeout(() => tapArea.style.animation = '', 300);
         }
     }
+}
+
+function handleTaskClaim(taskId, xp, coins) {
+    currentState = adapter.completeTask(taskId, xp, coins);
+    render();
 }
 
 function render() {
@@ -316,6 +337,32 @@ function render() {
   // --- HOME SCREEN ---
   const balanceEl = document.getElementById('balance-display');
   if (balanceEl) balanceEl.textContent = currentState.balance.toLocaleString();
+
+  // XP & Level UI
+  const levelBadge = document.getElementById('level-badge');
+  if (levelBadge) {
+      if (currentState.isPremium) {
+           levelBadge.innerHTML = `Lvl ${currentState.level} <span style="color:#FFD60A">★</span>`;
+           levelBadge.style.border = '1px solid #FFD60A';
+      } else {
+           levelBadge.textContent = `Lvl ${currentState.level}`;
+           levelBadge.style.border = '1px solid rgba(255,255,255,0.2)';
+      }
+  }
+
+  const xpBar = document.getElementById('xp-bar-fill');
+  const xpText = document.getElementById('xp-text');
+  if (xpBar && xpText) {
+      // Simple visual: XP / NextLevelXP
+      let target = 50;
+      if (currentState.level >= 1) target = 250;
+      if (currentState.level >= 2) target = 500;
+      if (currentState.level >= 5) target = 1050;
+
+      const pct = Math.min(100, (currentState.xp / target) * 100);
+      xpBar.style.width = `${pct}%`;
+      xpText.textContent = `${currentState.xp}/${target} XP`;
+  }
 
   // Energy Bar
   const energyVal = document.getElementById('energy-val');
@@ -330,10 +377,9 @@ function render() {
   const tapArea = document.getElementById('tap-area');
   if (tapArea && !tapArea.onclick) {
       tapArea.onclick = handleTap;
-      // Also prevent double-tap zoom issues
       tapArea.addEventListener('touchstart', function(e) {
-          e.preventDefault(); // prevents standard touch behavior like scroll/zoom
-          handleTap(e.touches[0]); // pass the touch point
+          e.preventDefault();
+          handleTap(e.touches[0]);
       }, {passive: false});
   }
 
@@ -348,7 +394,7 @@ function render() {
           minerBtn.textContent = 'Start Mining';
           minerBtn.disabled = false;
           minerBtn.onclick = async () => {
-              minerBtn.disabled = true; // Prevent double click
+              minerBtn.disabled = true;
               currentState = await adapter.minerStart();
               render();
           };
@@ -358,11 +404,10 @@ function render() {
 
           if (left > 0) {
               minerStatus.textContent = formatTime(left);
-              minerStatus.className = 'status-chip ready'; // Greenish while active
+              minerStatus.className = 'status-chip ready';
               minerBtn.textContent = 'Mining...';
               minerBtn.disabled = true;
           } else {
-              // Time is up, needs claim
               minerStatus.textContent = 'Done';
               minerStatus.className = 'status-chip ready';
               minerBtn.textContent = 'Claim Reward';
@@ -379,14 +424,12 @@ function render() {
   // Shop Render
   const shopList = document.getElementById('shop-list');
   if (shopList && currentState.shop && currentState.shop.items) {
-      shopList.innerHTML = ''; // Clear
+      shopList.innerHTML = '';
 
       currentState.shop.items.forEach(item => {
-          // Check ownership
           const owned = (currentState.boosts.inventory || []).includes(item.id);
 
           const div = document.createElement('div');
-          // USE NEW CLASS "boost-card"
           div.className = 'card boost-card';
           div.style.marginBottom = '12px';
           div.style.padding = '16px';
@@ -417,16 +460,18 @@ function render() {
               btn.style.border = '1px solid var(--success-color)';
               btn.style.color = 'var(--success-color)';
               btn.textContent = 'Owned';
+
+              if (item.id === 'item_premium') {
+                   btn.textContent = 'Premium';
+                   div.style.border = '1px solid #FFD60A';
+              }
           } else {
               btn.onclick = async () => {
                   if (currentState.balance >= item.price) {
-                      // Optimistic UI
                       btn.textContent = 'Buying...';
                       currentState = await adapter.shopBuy(item.id);
                       render();
-                      // Modal handled in adapter
                   } else {
-                      // Shake animation
                       btn.style.animation = 'shake 0.3s';
                       setTimeout(() => btn.style.animation = '', 300);
                   }
@@ -435,6 +480,66 @@ function render() {
           shopList.appendChild(div);
       });
   }
+
+  // TASKS LIST (Dynamic)
+  // Module 1: XP / TGM Rewards
+  // Chat: +13 XP
+  // Invite: +250 XP + 100 TGM (Module 4)
+  // Lottery: +100 XP
+  // NFT: +250 XP
+  // Daily: +50 XP (Level 1 req) + 5 TGM (Level 1 reward)
+  const taskList = document.querySelector('#tasks .list-group');
+  if (taskList) {
+      taskList.innerHTML = '';
+
+      const TASKS_DEF = [
+          {id: 't_chat', name: 'Write in Chat', reward_xp: 13, reward_coin: 0, sub: '+13 XP'},
+          {id: 't_invite', name: 'Invite a Friend', reward_xp: 250, reward_coin: 100, sub: '+250 XP, +100 TGM'},
+          {id: 't_lottery', name: 'Buy Lottery Ticket', reward_xp: 100, reward_coin: 0, sub: '+100 XP'},
+          {id: 't_nft', name: 'Buy NFT', reward_xp: 250, reward_coin: 0, sub: '+250 XP'},
+          {id: 't_daily', name: 'Daily Login', reward_xp: 50, reward_coin: 5, sub: '+50 XP, +5 TGM'}
+      ];
+
+      const doneList = currentState.tasks.doneList || [];
+
+      TASKS_DEF.forEach(t => {
+          const isDone = doneList.includes(t.id);
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          div.innerHTML = `
+            <div class="item-info">
+                <h4>${t.name}</h4>
+                <div class="item-price">${t.sub}</div>
+            </div>
+            <button class="btn-gray-pill">${isDone ? 'Done' : 'Do'}</button>
+          `;
+
+          const btn = div.querySelector('button');
+          if (isDone) {
+              btn.disabled = true;
+              btn.style.background = 'transparent';
+              btn.style.color = 'var(--text-secondary)';
+          } else {
+              btn.onclick = () => {
+                  handleTaskClaim(t.id, t.reward_xp, t.reward_coin);
+              };
+          }
+          taskList.appendChild(div);
+      });
+  }
+
+  // FRIENDS UI Update (Module 4)
+  const friendsView = document.getElementById('friends');
+  if (friendsView) {
+      const p = friendsView.querySelector('.item-price');
+      if (p) p.textContent = "Invite friends to earn +100 TGM per invite plus 10% commission on their mining!";
+  }
+
+  // MINER UI Update (Module 2)
+  const minerInfo = document.querySelector('#miner-status')?.parentElement?.querySelector('.item-price');
+  if (minerInfo) {
+      minerInfo.textContent = "Passive income (x10 in Sponsor Chat)";
+  }
 }
 
 // Helper: Icons (SF Symbols approximation)
@@ -442,21 +547,18 @@ function getIcon(name) {
     if (name === 'bolt') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #FFD60A"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>';
     if (name === 'battery') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #32D74B"><rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect><line x1="23" y1="13" x2="23" y2="11"></line></svg>';
     if (name === 'hand.tap') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0A84FF"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>';
+    if (name === 'crown') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #FFD60A"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v2H5z"></path></svg>';
     return '📦';
 }
 
-// --- ANIMATION SYSTEM ---
-
+/* --- ANIMATION SYSTEM --- */
 function triggerTapAnimation(event, amount) {
     const floatText = document.createElement('div');
     floatText.className = 'burst-text';
     floatText.textContent = `+${amount}`;
 
-    // Position at click/touch
     let x = event.clientX;
     let y = event.clientY;
-
-    // Fallback for center if no event coords (unlikely)
     if (!x || !y) {
         x = window.innerWidth / 2;
         y = window.innerHeight / 2;
@@ -467,13 +569,12 @@ function triggerTapAnimation(event, amount) {
     floatText.style.top = y + 'px';
     floatText.style.pointerEvents = 'none';
     floatText.style.zIndex = '9999';
-    floatText.style.fontSize = '32px'; // Larger for tap
+    floatText.style.fontSize = '32px';
 
     document.body.appendChild(floatText);
     setTimeout(() => floatText.remove(), 1000);
 }
 
-// 1. Particle Burst (More Particles)
 function triggerBoostAnimation(amount) {
     const burstCount = 12;
     const centerX = window.innerWidth / 2;
@@ -482,32 +583,23 @@ function triggerBoostAnimation(amount) {
     for (let i = 0; i < burstCount; i++) {
         const p = document.createElement('div');
         p.className = 'particle';
-
-        // Random angle and distance
         const angle = (Math.random() * 360) * (Math.PI / 180);
         const dist = 50 + Math.random() * 100;
         const tx = Math.cos(angle) * dist + 'px';
         const ty = Math.sin(angle) * dist + 'px';
-
         p.style.setProperty('--tx', tx);
         p.style.setProperty('--ty', ty);
-
-        // Random position jitter
         p.style.left = centerX + 'px';
         p.style.top = centerY + 'px';
-
-        // Animation
         p.style.animation = `flyOut 0.8s ease-out forwards`;
-
         document.body.appendChild(p);
         setTimeout(() => p.remove(), 800);
     }
 
-    // Float Text
     if (amount) {
         const floatText = document.createElement('div');
         floatText.className = 'burst-text';
-        floatText.textContent = `+${amount}`;
+        floatText.textContent = typeof amount === 'number' ? `+${amount}` : amount;
         floatText.style.position = 'fixed';
         floatText.style.top = '50%';
         floatText.style.left = '50%';
@@ -519,9 +611,7 @@ function triggerBoostAnimation(amount) {
     }
 }
 
-// 2. Success Modal
 function showSuccessModal(message) {
-    // Check if exists
     let overlay = document.querySelector('.success-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
@@ -537,14 +627,10 @@ function showSuccessModal(message) {
     } else {
         overlay.querySelector('p').textContent = message;
     }
-
-    // Show
     overlay.style.opacity = '1';
     overlay.style.pointerEvents = 'auto';
     const card = overlay.querySelector('.success-card');
     card.style.transform = 'scale(1)';
-
-    // Hide automatically
     setTimeout(() => {
         overlay.style.opacity = '0';
         overlay.style.pointerEvents = 'none';

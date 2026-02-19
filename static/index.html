@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TGM Coin</title>
-    <link rel="stylesheet" href="style.css?v=2.4">
-    <link rel="stylesheet" href="premium.css?v=2.4">
+    <link rel="stylesheet" href="style.css?v=2.5">
+    <link rel="stylesheet" href="premium.css?v=2.5">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       /* Icon fonts simulation */
@@ -23,7 +23,9 @@
             <!-- Header (Dynamic) -->
             <header id="main-header">
                 <div class="brand">TGM Coin</div>
-                <button class="profile-btn">
+                <div style="flex: 1;"></div>
+                <div id="level-badge" class="level-badge">Lvl 1</div>
+                <button class="profile-btn" style="margin-left: 12px;">
                   <!-- Person Crop Circle -->
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="white" stroke-width="2"/>
@@ -39,6 +41,17 @@
                     <div class="balance-hero">
                         <div class="balance-sub">Total Balance</div>
                         <div class="balance-amount" id="balance-display">0</div>
+
+                        <!-- XP Bar -->
+                        <div class="xp-container">
+                            <div class="xp-info">
+                                <span class="xp-label">XP Progress</span>
+                                <span class="xp-val" id="xp-text">0/50 XP</span>
+                            </div>
+                            <div class="xp-bar-bg">
+                                <div class="xp-bar-fill" id="xp-bar-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
 
                         <!-- Tap Area -->
                         <div id="tap-area" class="tap-coin">
@@ -226,6 +239,6 @@
             </nav>
         </div>
     </div>
-    <script src="app.js?v=2.4"></script>
+    <script src="app.js?v=2.5"></script>
 </body>
 </html>

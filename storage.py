@@ -4,7 +4,7 @@ import time
 
 DB_NAME = 'tgm_coin.db'
 
-# Define Shop Items (Boosts & Cosmetics)
+# Define Shop Items (Boosts & Cosmetics & Premium)
 SHOP_ITEMS = {
     'boost_speed': {
         'id': 'boost_speed',
@@ -20,7 +20,7 @@ SHOP_ITEMS = {
         'price': 250,
         'type': 'booster',
         'icon': 'battery',
-        'desc': '+100 Max Energy'
+        'desc': '+500 Max Energy'
     },
     'boost_multitap': {
         'id': 'boost_multitap',
@@ -29,7 +29,30 @@ SHOP_ITEMS = {
         'type': 'booster',
         'icon': 'hand.tap',
         'desc': '+1 Coin per tap'
+    },
+    'item_premium': {
+        'id': 'item_premium',
+        'name': 'Premium Status',
+        'price': 100,
+        'type': 'subscription',
+        'icon': 'crown',
+        'desc': 'x2 Multiplier on ALL Earnings'
     }
+}
+
+# Module 1: XP Thresholds & Rewards
+LEVEL_THRESHOLDS = {
+    1: {'xp': 50, 'reward': 5},
+    2: {'xp': 250, 'reward': 1},
+    3: {'xp': 500, 'reward': 1},
+    4: {'xp': 600, 'reward': 1},
+    5: {'xp': 650, 'reward': 10},
+    10: {'xp': 1050, 'reward': 100},
+    15: {'xp': 1500, 'reward': 200},
+    20: {'xp': 2000, 'reward': 400},
+    30: {'xp': 3000, 'reward': 600},
+    40: {'xp': 4000, 'reward': 600},
+    50: {'xp': 14000, 'reward': 1000}
 }
 
 def get_db():
@@ -41,7 +64,7 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    # Users table - Added energy columns
+    # Users table - Added energy columns, xp, level, is_premium
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         balance INTEGER DEFAULT 0,
@@ -49,6 +72,9 @@ def init_db():
         max_energy INTEGER DEFAULT 500,
         last_energy_ts INTEGER DEFAULT 0,
         tap_level INTEGER DEFAULT 1,
+        xp INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 0,
+        is_premium INTEGER DEFAULT 0,
         last_reward_ts INTEGER DEFAULT 0,
         last_daily_ts INTEGER DEFAULT 0,
         miner_status TEXT DEFAULT 'idle',
@@ -66,6 +92,19 @@ def init_db():
     conn.commit()
     conn.close()
 
+def get_next_level_xp(current_level):
+    # Find next threshold > current level
+    # Since keys are sparse (1, 2, 3, 4, 5, 10...), we need logic
+    # Assume levels between thresholds require previous threshold XP?
+    # Or just use the closest higher key?
+    # Module 1 implies specific levels grant specific rewards.
+    # We'll just target the next defined milestone for simplicity in this MVP.
+    sorted_levels = sorted(LEVEL_THRESHOLDS.keys())
+    for lvl in sorted_levels:
+        if lvl > current_level:
+            return LEVEL_THRESHOLDS[lvl]['xp'], lvl
+    return 999999, 100 # Max
+
 def get_user_state(user_id):
     conn = get_db()
     c = conn.cursor()
@@ -78,6 +117,10 @@ def get_user_state(user_id):
         'energy': 500,
         'maxEnergy': 500,
         'tapLevel': 1,
+        'xp': 0,
+        'level': 0,
+        'nextLevelXp': 50,
+        'isPremium': False,
         'chat': {'lastRewardTs': 0, 'cooldownSec': 60},
         'daily': {'lastDailyTs': 0, 'cooldownSec': 86400},
         'miner': {'status': 'idle', 'sessionEndTs': 0, 'lastClaimTs': 0},
@@ -119,6 +162,15 @@ def get_user_state(user_id):
     state['maxEnergy'] = max_energy
     state['tapLevel'] = row['tap_level']
 
+    # XP & Level
+    state['xp'] = row['xp']
+    state['level'] = row['level']
+    state['isPremium'] = bool(row['is_premium'])
+
+    next_xp, next_lvl = get_next_level_xp(row['level'])
+    state['nextLevelXp'] = next_xp
+    state['nextLevelTarget'] = next_lvl
+
     state['chat']['lastRewardTs'] = row['last_reward_ts']
     state['daily']['lastDailyTs'] = row['last_daily_ts']
 
@@ -150,7 +202,7 @@ def get_user_state(user_id):
 def update_tap(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT balance, energy, max_energy, last_energy_ts, tap_level FROM users WHERE id = ?', (user_id,))
+    c.execute('SELECT balance, energy, max_energy, last_energy_ts, tap_level, is_premium, xp FROM users WHERE id = ?', (user_id,))
     row = c.fetchone()
 
     if row:
@@ -160,6 +212,8 @@ def update_tap(user_id):
         max_energy = row['max_energy']
         last_ts = row['last_energy_ts']
         tap_level = row['tap_level']
+        is_premium = row['is_premium']
+        xp = row['xp']
 
         # Calculate regen first
         elapsed = now - last_ts
@@ -168,7 +222,16 @@ def update_tap(user_id):
 
         if energy >= 1:
             new_energy = energy - 1
-            new_balance = balance + (1 * tap_level)
+
+            # Premium Multiplier (x2)
+            multiplier = 2 if is_premium else 1
+            gain = (1 * tap_level) * multiplier
+
+            new_balance = balance + gain
+
+            # Simple XP gain on tap? Usually taps don't give XP, but for MVP let's say 1 XP per tap occasionally?
+            # Or stick to modules: "Chat +13 XP". Tapping is not listed as XP source.
+
             c.execute('UPDATE users SET balance = ?, energy = ?, last_energy_ts = ? WHERE id = ?',
                       (new_balance, new_energy, now, user_id))
             conn.commit()
@@ -190,7 +253,7 @@ def update_miner_start(user_id):
 def update_miner_claim(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT miner_status, miner_session_end_ts, balance, inventory_json FROM users WHERE id = ?', (user_id,))
+    c.execute('SELECT miner_status, miner_session_end_ts, balance, inventory_json, is_premium FROM users WHERE id = ?', (user_id,))
     row = c.fetchone()
 
     if row and row['miner_status'] == 'mining':
@@ -202,11 +265,14 @@ def update_miner_claim(user_id):
             try: inventory = json.loads(row['inventory_json'])
             except: inventory = []
 
-            multiplier = 1
+            boost_multiplier = 1
             if 'boost_speed' in inventory:
-                multiplier = 2
+                boost_multiplier = 2
 
-            final_reward = base_reward * multiplier
+            # Premium Multiplier (x2)
+            premium_multiplier = 2 if row['is_premium'] else 1
+
+            final_reward = base_reward * boost_multiplier * premium_multiplier
             new_balance = row['balance'] + final_reward
 
             c.execute('''UPDATE users SET
@@ -228,7 +294,7 @@ def buy_item(user_id, item_id):
 
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT balance, inventory_json, max_energy, tap_level FROM users WHERE id = ?', (user_id,))
+    c.execute('SELECT balance, inventory_json, max_energy, tap_level, is_premium FROM users WHERE id = ?', (user_id,))
     row = c.fetchone()
 
     if row:
@@ -257,6 +323,8 @@ def buy_item(user_id, item_id):
                 new_tap = row['tap_level'] + 1
                 extra_sql = ", tap_level = ?"
                 args.append(new_tap)
+            elif item_id == 'item_premium':
+                extra_sql = ", is_premium = 1"
 
             query = f'UPDATE users SET balance = ?, inventory_json = ? {extra_sql} WHERE id = ?'
             all_args = [new_balance, json.dumps(inventory)] + args + [user_id]
