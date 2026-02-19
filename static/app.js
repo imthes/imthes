@@ -1,3 +1,5 @@
+/* ... existing DataAdapter and Router logic ... */
+
 class DataAdapter {
   constructor() {
     this.apiBase = localStorage.getItem('tgm_api_base') || '/api';
@@ -63,11 +65,15 @@ class DataAdapter {
           const res = await fetch(`${this.apiBase}/shop/buy`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ uid: this.uid, itemId: itemId }) // Use camelCase to match storage.py or fix admin_ui
+              body: JSON.stringify({ uid: this.uid, itemId: itemId })
           });
           if (!res.ok) throw new Error('API Error');
           const data = await res.json();
           this.state = data;
+
+          // Trigger Success Modal for Boosts
+          showSuccessModal('Boost Activated!');
+
           return data;
       } catch (e) {
           console.warn('Shop buy failed offline', e);
@@ -142,7 +148,6 @@ async function init() {
 
   // Tick loop
   setInterval(() => {
-    // Only re-render if visible
     if (!document.hidden) {
         render();
     }
@@ -207,24 +212,25 @@ function render() {
           const owned = currentState.boosts.inventory.includes(item.id);
 
           const div = document.createElement('div');
-          div.className = 'card'; // Use card style for boosts
+          // USE NEW CLASS "boost-card"
+          div.className = 'card boost-card';
           div.style.marginBottom = '12px';
-          div.style.padding = '12px 16px';
+          div.style.padding = '16px';
           div.style.display = 'flex';
           div.style.alignItems = 'center';
           div.style.justifyContent = 'space-between';
 
           div.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 40px; height: 40px; background: rgba(0,122,255,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="boost-icon-wrapper">
                     ${getIcon(item.icon)}
                 </div>
                 <div>
-                    <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${item.name}</h4>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">${item.desc}</div>
+                    <h4 style="margin: 0; font-size: 17px; font-weight: 600;">${item.name}</h4>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${item.desc}</div>
                 </div>
             </div>
-            <button class="btn-tinted-pill" style="height: 32px; font-size: 13px; padding: 0 12px;">
+            <button class="btn-tinted-pill" style="height: 32px; font-size: 13px; padding: 0 12px; border-radius: 16px;">
                 ${owned ? 'Active' : item.price + ' TGM'}
             </button>
           `;
@@ -244,7 +250,7 @@ function render() {
                       btn.textContent = 'Buying...';
                       currentState = await adapter.shopBuy(item.id);
                       render();
-                      triggerBoostAnimation();
+                      // Modal handled in adapter
                   } else {
                       // Shake animation
                       btn.style.animation = 'shake 0.3s';
@@ -265,28 +271,88 @@ function getIcon(name) {
     return '📦';
 }
 
-// Animation
-function triggerBoostAnimation(amount) {
-    // 1. Particle Burst
-    const burst = document.createElement('div');
-    burst.className = 'boost-burst';
-    burst.style.position = 'fixed';
-    burst.style.top = '50%';
-    burst.style.left = '50%';
-    burst.style.transform = 'translate(-50%, -50%)';
-    burst.style.pointerEvents = 'none';
-    burst.style.zIndex = '9999';
-    burst.innerHTML = `
-        <div class="burst-circle"></div>
-        <div class="burst-text">${amount ? '+' + amount : 'Success!'}</div>
-    `;
-    document.body.appendChild(burst);
+// --- ANIMATION SYSTEM ---
 
-    // Remove after animation
-    setTimeout(() => burst.remove(), 2000);
+// 1. Particle Burst (More Particles)
+function triggerBoostAnimation(amount) {
+    const burstCount = 12;
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    for (let i = 0; i < burstCount; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+
+        // Random angle and distance
+        const angle = (Math.random() * 360) * (Math.PI / 180);
+        const dist = 50 + Math.random() * 100;
+        const tx = Math.cos(angle) * dist + 'px';
+        const ty = Math.sin(angle) * dist + 'px';
+
+        p.style.setProperty('--tx', tx);
+        p.style.setProperty('--ty', ty);
+
+        // Random position jitter
+        p.style.left = centerX + 'px';
+        p.style.top = centerY + 'px';
+
+        // Animation
+        p.style.animation = `flyOut 0.8s ease-out forwards`;
+
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 800);
+    }
+
+    // Float Text
+    if (amount) {
+        const floatText = document.createElement('div');
+        floatText.className = 'burst-text';
+        floatText.textContent = `+${amount}`;
+        floatText.style.position = 'fixed';
+        floatText.style.top = '50%';
+        floatText.style.left = '50%';
+        floatText.style.transform = 'translate(-50%, -50%)';
+        floatText.style.pointerEvents = 'none';
+        floatText.style.zIndex = '9999';
+        document.body.appendChild(floatText);
+        setTimeout(() => floatText.remove(), 1500);
+    }
 }
 
-// Add CSS for animation dynamically
+// 2. Success Modal
+function showSuccessModal(message) {
+    // Check if exists
+    let overlay = document.querySelector('.success-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'success-overlay';
+        overlay.innerHTML = `
+            <div class="success-card">
+                <div class="success-icon">✅</div>
+                <h3 style="margin-bottom: 8px; font-size: 20px;">Success</h3>
+                <p style="color: var(--text-secondary); margin: 0;">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        overlay.querySelector('p').textContent = message;
+    }
+
+    // Show
+    overlay.style.opacity = '1';
+    overlay.style.pointerEvents = 'auto';
+    const card = overlay.querySelector('.success-card');
+    card.style.transform = 'scale(1)';
+
+    // Hide automatically
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        overlay.style.pointerEvents = 'none';
+        card.style.transform = 'scale(0.8)';
+    }, 2000);
+}
+
+// Inject CSS for shake if needed (moved to premium.css, but keeping fallback)
 const style = document.createElement('style');
 style.textContent = `
 @keyframes shake {
@@ -294,46 +360,6 @@ style.textContent = `
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
   100% { transform: translateX(0); }
-}
-
-.boost-burst {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.burst-circle {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,122,255,0.8) 0%, rgba(0,0,0,0) 70%);
-    animation: burstScale 0.6s ease-out forwards;
-    opacity: 0;
-}
-
-.burst-text {
-    font-family: 'SF Pro Display', sans-serif;
-    font-size: 32px;
-    font-weight: 800;
-    color: #fff;
-    text-shadow: 0 2px 10px rgba(0,122,255,0.5);
-    margin-top: -60px;
-    animation: textFloat 1.5s ease-out forwards;
-    opacity: 0;
-}
-
-@keyframes burstScale {
-    0% { transform: scale(0.2); opacity: 0; }
-    50% { opacity: 1; }
-    100% { transform: scale(2.0); opacity: 0; }
-}
-
-@keyframes textFloat {
-    0% { transform: translateY(20px); opacity: 0; }
-    20% { opacity: 1; transform: translateY(0); }
-    80% { opacity: 1; transform: translateY(-20px); }
-    100% { opacity: 0; transform: translateY(-40px); }
 }
 `;
 document.head.appendChild(style);
