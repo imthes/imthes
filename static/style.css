@@ -431,3 +431,44 @@ nav {
     margin-bottom: 16px;
     color: var(--accent-color);
 }
+
+/* Animations - Particles */
+.boost-burst {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.burst-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,122,255,0.8) 0%, rgba(0,0,0,0) 70%);
+    animation: burstScale 0.6s ease-out forwards;
+    opacity: 0;
+}
+
+.burst-text {
+    font-family: 'SF Pro Display', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0,122,255,0.5);
+    margin-top: -60px;
+    animation: textFloat 1.5s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes burstScale {
+    0% { transform: scale(0.2); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: scale(2.0); opacity: 0; }
+}
+
+@keyframes textFloat {
+    0% { transform: translateY(20px); opacity: 0; }
+    20% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(-20px); }
+    100% { opacity: 0; transform: translateY(-40px); }
+}

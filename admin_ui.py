@@ -38,11 +38,14 @@ def miner_claim():
 
 @app.route('/api/shop/buy', methods=['POST'])
 def shop_buy():
-    user_id = request.json.get('uid', 'demo_user')
-    item_id = request.json.get('item_id')
+    data = request.json
+    user_id = data.get('uid', 'demo_user')
+    item_id = data.get('itemId')
     if not item_id:
         return jsonify({'error': 'No item_id'}), 400
-    new_state = storage.update_shop_buy(user_id, item_id)
+
+    # Delegate to storage
+    new_state = storage.buy_item(user_id, item_id)
     return jsonify(new_state)
 
 if __name__ == '__main__':
