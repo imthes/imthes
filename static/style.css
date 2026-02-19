@@ -5,7 +5,7 @@
   --secondary-bg: rgba(28, 28, 30, 0.8);
   --card-bg: #1c1c1e;
   --accent-color: #007aff; /* Apple Blue */
-  --accent-gradient: linear-gradient(135deg, #007aff, #0056D4); /* Stronger gradient */
+  --accent-gradient: linear-gradient(180deg, #4FA8FF 0%, #007AFF 100%); /* High-Gloss Blue */
   --success-color: #34c759;
   --danger-color: #ff3b30;
   --text-secondary: #8e8e93;
@@ -187,7 +187,7 @@ h3 {
   padding: 16px;
   margin-bottom: 16px;
   transition: background-color 0.2s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Slight shadow for separation */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .card-header {
@@ -244,13 +244,14 @@ h3 {
   font-family: "SF Pro Display", sans-serif;
   font-size: 52px;
   font-weight: 700;
-  background: var(--accent-gradient);
+  background: linear-gradient(180deg, #FFFFFF 0%, #D0D0D0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 4px;
   letter-spacing: -0.5px;
-  text-shadow: 0 4px 12px rgba(0, 122, 255, 0.25); /* Subtle glow */
   font-variant-numeric: tabular-nums;
+  /* Slight blue tint reflection */
+  text-shadow: 0 0 20px rgba(0, 122, 255, 0.15);
 }
 
 .balance-sub {
@@ -261,49 +262,59 @@ h3 {
   letter-spacing: 0.5px;
 }
 
-/* --- PREMIUM BUTTONS --- */
+/* --- ULTRA-REALISTIC APPLE BUTTONS --- */
 
-/* 1. Large Gradient Button (CTA) */
+/* 1. Large High-Gloss Button (CTA) */
 .btn-filled {
-  background: linear-gradient(180deg, #007AFF 0%, #0062E0 100%); /* Stronger gradient */
+  /* Vertical Gradient: Top lighter blue -> Bottom standard blue */
+  background: linear-gradient(180deg, #5CA4FF 0%, #007AFF 100%);
   color: white;
   border: none;
-  height: 52px; /* Slightly taller */
-  border-radius: 14px; /* Squircle radius */
+  height: 52px;
+  border-radius: 14px;
   width: 100%;
-  font-family: "SF Pro Text", -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 17px;
-  font-weight: 600; /* Bold */
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.1s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s, opacity 0.2s;
   letter-spacing: -0.4px;
 
-  /* Inner light border (top shine) */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 10px rgba(0, 100, 230, 0.3);
+  /* Inner Bevel (Top White Highlight) + Drop Shadow (Glow) */
+  box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35), /* Top Shine */
+      inset 0 0 2px rgba(255, 255, 255, 0.1), /* Inner Glow */
+      0 4px 12px rgba(0, 122, 255, 0.4), /* Outer Blue Glow */
+      0 2px 4px rgba(0,0,0,0.15); /* Depth Shadow */
+
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, filter 0.2s;
 }
 
 .btn-filled:active {
-  transform: scale(0.96);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-  opacity: 0.9;
+  transform: scale(0.97);
+  background: linear-gradient(180deg, #3A90FF 0%, #0066D6 100%); /* Slightly darker on press */
+  box-shadow:
+      inset 0 1px 2px rgba(0,0,0,0.2), /* Inset Shadow */
+      0 2px 6px rgba(0, 122, 255, 0.3); /* Reduced Glow */
+  filter: brightness(0.95);
 }
 
 .btn-filled:disabled {
-    background: #2c2c2e;
-    color: #48484a;
+    background: #3a3a3c;
+    color: #636366;
     box-shadow: none;
     transform: none;
+    cursor: default;
 }
 
-/* 2. Small Tinted Pill (Spend) - More vibrant */
+/* 2. Small Tinted Pill (Spend) - Glossy */
 .btn-tinted-pill {
     margin-top: 16px;
-    background: rgba(0, 122, 255, 0.2); /* More opacity */
-    color: #2ea6ff; /* Brighter blue for text */
-    border: 1px solid rgba(0, 122, 255, 0.1); /* Subtle border */
+    background: rgba(30, 30, 32, 0.6);
+    color: #4BA1FF; /* Lighter Blue Text */
+    border: 1px solid rgba(75, 161, 255, 0.3); /* Subtle Blue Border */
     height: 34px;
     padding: 0 18px;
     border-radius: 17px;
@@ -313,18 +324,23 @@ h3 {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+
+    /* Inner Glow */
+    box-shadow: inset 0 0 10px rgba(0, 122, 255, 0.1);
+
     transition: background-color 0.2s, transform 0.1s;
 }
 
 .btn-tinted-pill:active {
-    background: rgba(0, 122, 255, 0.35);
-    transform: scale(0.95);
+    background: rgba(0, 122, 255, 0.2);
+    transform: scale(0.96);
+    border-color: rgba(75, 161, 255, 0.5);
 }
 
 /* 3. Gray Pill (Claim/Buy Small) */
 .btn-gray-pill {
-    background: rgba(142, 142, 147, 0.2);
-    color: #0A84FF; /* iOS System Blue Dark Mode */
+    background: rgba(142, 142, 147, 0.15);
+    color: #4BA1FF;
     border: none;
     height: 30px;
     padding: 0 14px;
@@ -351,7 +367,7 @@ h3 {
 }
 
 .status-chip.ready {
-  background: rgba(48, 209, 88, 0.2); /* iOS Green */
+  background: rgba(48, 209, 88, 0.2);
   color: #30D158;
 }
 
@@ -388,7 +404,7 @@ nav {
 }
 
 .nav-item.active {
-  color: #0A84FF; /* iOS System Blue */
+  color: #0A84FF;
 }
 
 .nav-icon {
