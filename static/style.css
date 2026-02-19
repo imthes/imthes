@@ -18,36 +18,86 @@ body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-color);
+  background-color: #121212; /* Darker background for desktop presentation */
   color: var(--text-color);
-  overflow: hidden; /* Prevent body scroll, handle in main */
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
+}
+
+/* Desktop Wrapper - The Phone Frame */
+.desktop-wrapper {
+    width: 100%;
+    max-width: 430px; /* iPhone Pro Max width */
+    height: 95vh;
+    max-height: 932px;
+    background-color: #000;
+    border-radius: 44px;
+    box-shadow: 0 0 0 12px #333, 0 20px 50px rgba(0,0,0,0.5); /* Bezel + Shadow */
+    position: relative;
+    overflow: hidden;
+    transform: scale(0.95); /* Slight scale down to fit nicely */
+}
+
+/* On mobile, remove the frame */
+@media (max-width: 480px) {
+    body {
+        background-color: #000;
+        align-items: flex-start;
+    }
+    .desktop-wrapper {
+        max-width: none;
+        height: 100vh;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+        transform: none;
+    }
+    .notch {
+        display: none;
+    }
 }
 
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
   box-sizing: border-box;
+  position: relative;
+  background-color: #000; /* Ensure app bg is black */
+}
+
+/* Notch / Dynamic Island Simulation */
+.notch {
+    position: absolute;
+    top: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 35px;
+    background-color: #000;
+    border-radius: 20px;
+    z-index: 9999;
+    pointer-events: none;
 }
 
 /* Header */
 header {
   position: absolute;
-  top: 0;
+  top: 44px; /* Below notch */
   left: 0;
   right: 0;
-  height: calc(44px + var(--safe-area-top));
-  padding-top: var(--safe-area-top);
+  height: 44px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-left: 16px;
-  padding-right: 16px;
-  background-color: rgba(0, 0, 0, 0.0); /* Transparent initially */
+  padding-left: 20px;
+  padding-right: 20px;
   z-index: 100;
   transition: background-color 0.3s;
 }
@@ -59,10 +109,10 @@ header {
 }
 
 .profile-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -77,11 +127,18 @@ main {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 80px; /* Space for tab bar */
+  padding-top: 44px; /* Space for notch/header */
+  padding-bottom: 90px; /* Space for tab bar */
+  padding-left: 20px;
+  padding-right: 20px;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+main::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
 }
 
 .view {
-  padding: 20px 16px;
+  padding-top: 20px;
   min-height: 100%;
   box-sizing: border-box;
 }
@@ -89,17 +146,20 @@ main {
 /* Large Titles */
 h1.large-title {
   font-size: 34px;
-  font-weight: 700;
-  margin-top: 40px;
+  font-weight: 800;
+  margin-top: 20px;
   margin-bottom: 20px;
-  letter-spacing: 0.37px;
+  letter-spacing: -0.5px;
+  color: #fff;
 }
 
 h2 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
-  margin-top: 30px;
-  margin-bottom: 10px;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  color: var(--text-color);
+  letter-spacing: -0.3px;
 }
 
 h3 {
@@ -111,14 +171,14 @@ h3 {
 /* Cards & iOS List Style */
 .card {
   background-color: var(--card-bg);
-  border-radius: 12px;
+  border-radius: 16px; /* More rounded */
   padding: 16px;
   margin-bottom: 16px;
 }
 
 .list-group {
   background-color: var(--card-bg);
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -129,7 +189,7 @@ h3 {
   justify-content: space-between;
   align-items: center;
   background-color: var(--card-bg);
-  border-bottom: 0.5px solid var(--separator);
+  border-bottom: 0.5px solid #38383a;
 }
 
 .list-item:last-child {
@@ -139,7 +199,7 @@ h3 {
 .item-info h4 {
   margin: 0 0 4px 0;
   font-size: 17px;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .item-price {
@@ -155,17 +215,19 @@ h3 {
 }
 
 .balance-amount {
-  font-size: 48px;
+  font-size: 56px; /* Larger */
   font-weight: 700;
   background: var(--accent-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 8px;
+  letter-spacing: -1px;
 }
 
 .balance-sub {
   font-size: 15px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .spend-btn {
@@ -173,8 +235,8 @@ h3 {
   background: rgba(255, 255, 255, 0.1);
   color: var(--accent-color);
   border: none;
-  padding: 8px 16px;
-  border-radius: 18px;
+  padding: 8px 20px;
+  border-radius: 20px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -185,23 +247,25 @@ h3 {
   background: var(--accent-color);
   color: white;
   border: none;
-  padding: 14px;
-  border-radius: 12px;
+  padding: 16px; /* Taller tap target */
+  border-radius: 14px;
   width: 100%;
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.1s;
 }
 
 .cta-btn:active {
-  opacity: 0.7;
+  opacity: 0.8;
+  transform: scale(0.98);
 }
 
 .cta-btn:disabled {
-  background-color: var(--separator);
-  color: var(--text-secondary);
+  background-color: #3a3a3c;
+  color: #8e8e93;
   cursor: default;
+  transform: none;
 }
 
 .status-chip {
@@ -218,20 +282,20 @@ h3 {
   color: var(--success-color);
 }
 
-/* Tab Bar */
+/* Tab Bar - Frosted Glass */
 nav {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(49px + var(--safe-area-bottom));
-  background-color: rgba(28, 28, 30, 0.85);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid rgba(255, 255, 255, 0.15);
+  height: 85px; /* Taller for rounded aesthetic */
+  background-color: rgba(28, 28, 30, 0.75); /* More transparent */
+  backdrop-filter: saturate(180%) blur(25px);
+  -webkit-backdrop-filter: saturate(180%) blur(25px);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.1);
   display: flex;
   justify-content: space-around;
-  padding-bottom: var(--safe-area-bottom);
+  padding-bottom: 20px; /* Safe area handled by height/padding combo */
   z-index: 1000;
 }
 
@@ -245,7 +309,8 @@ nav {
   color: #999999;
   font-size: 10px;
   font-weight: 500;
-  padding-top: 4px;
+  padding-top: 10px;
+  transition: color 0.2s;
 }
 
 .nav-item.active {
@@ -254,5 +319,5 @@ nav {
 
 .nav-icon {
   font-size: 24px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
