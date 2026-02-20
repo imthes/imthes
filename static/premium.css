@@ -7,24 +7,9 @@
 
   --ios-blue: #0A84FF;
   --ios-green: #30D158;
-  --ios-indigo: #5E5CE6;
   --ios-orange: #FF9F0A;
-  --ios-pink: #FF375F;
-  --ios-purple: #BF5AF2;
-  --ios-red: #FF453A;
-  --ios-teal: #64D2FF;
-  --ios-yellow: #FFD60A;
-
-  --ios-gray: #8E8E93;
-  --ios-gray2: #636366;
-  --ios-gray3: #48484A;
-  --ios-gray4: #3A3A3C;
-  --ios-gray5: #2C2C2E;
-  --ios-gray6: #1C1C1E;
-
   --text-primary: #FFFFFF;
   --text-secondary: rgba(235, 235, 245, 0.6);
-  --text-tertiary: rgba(235, 235, 245, 0.3);
 
   --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
@@ -33,8 +18,6 @@
   --btn-radius: 14px;
 
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.24);
-  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
 body {
@@ -42,7 +25,11 @@ body {
   color: var(--text-primary);
   font-family: var(--font-stack);
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em; /* SF Pro feel */
+  letter-spacing: -0.01em;
+  /* Prevent scroll bouncing/pull-to-refresh on mobile web app */
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* --- CARDS (Apple Wallet Style) --- */
@@ -55,28 +42,17 @@ body {
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background 0.2s;
-}
-
-.card:active {
-  transform: scale(0.98);
-  background: rgba(44, 44, 46, 0.8);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  /* Fix: Remove transform transition on hover/active for card container itself to avoid layout jitter */
+  /* transition: transform ... removed */
 }
 
 /* --- GROUPED LISTS (Settings Style) --- */
 .list-group {
-  background: var(--ios-card-bg); /* Use card bg for the group container */
+  background: var(--ios-card-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--card-radius);
-  overflow: hidden; /* Important for corner clipping */
+  overflow: hidden;
   margin-bottom: 24px;
   border: 1px solid var(--ios-card-border);
 }
@@ -86,8 +62,10 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: transparent; /* Transparent inside group */
+  background: transparent;
   position: relative;
+  /* Fix: Ensure clicks pass through correctly */
+  cursor: pointer;
   transition: background 0.2s;
 }
 
@@ -95,7 +73,7 @@ body {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 16px; /* Indent separator */
+  left: 16px;
   right: 0;
   height: 0.5px;
   background: var(--ios-separator);
@@ -108,40 +86,41 @@ body {
 /* --- TYPOGRAPHY --- */
 h1, h2, h3, h4 {
   margin: 0;
-  font-weight: 700; /* SF Pro Bold */
-  letter-spacing: -0.022em; /* Tighter headings */
+  font-weight: 700;
+  letter-spacing: -0.022em;
 }
 
 h1.large-title {
   font-size: 34px;
-  margin: 24px 0 16px 4px; /* Slight indent */
+  margin: 24px 0 16px 4px;
 }
 
 h2 {
-  font-size: 20px; /* Section Header */
+  font-size: 13px;
   color: var(--text-secondary);
   text-transform: uppercase;
   font-weight: 500;
-  font-size: 13px;
-  margin: 24px 0 8px 16px; /* Section header spacing */
+  margin: 24px 0 8px 16px;
   letter-spacing: -0.01em;
 }
 
 .balance-amount {
-  font-size: 56px; /* Hero number */
+  font-size: 56px;
   font-weight: 700;
-  letter-spacing: -0.03em; /* Very tight for large numbers */
-  text-shadow: 0 4px 24px rgba(255, 214, 10, 0.3); /* Gold glow */
+  letter-spacing: -0.03em;
+  text-shadow: 0 4px 24px rgba(255, 214, 10, 0.3);
+  /* Fix: Ensure numbers don't jump width */
+  font-variant-numeric: tabular-nums;
 }
 
 .item-info h3, .item-info h4 {
-  font-size: 17px; /* Standard body size */
+  font-size: 17px;
   font-weight: 600;
   margin-bottom: 2px;
 }
 
 .item-price {
-  font-size: 15px; /* Subhead */
+  font-size: 15px;
   color: var(--text-secondary);
   font-weight: 400;
 }
@@ -157,7 +136,9 @@ h2 {
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s;
+  /* Fix: Improve touch target & feedback */
+  transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.1s;
+  user-select: none;
 }
 
 .btn-filled:active {
@@ -166,27 +147,30 @@ h2 {
 }
 
 .btn-tinted-pill {
-  background: rgba(255, 255, 255, 0.15); /* Glassy pill */
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--text-primary);
   border: none;
   padding: 8px 20px;
-  border-radius: 20px; /* Fully rounded */
+  border-radius: 20px;
   font-size: 15px;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.1s;
+  user-select: none;
 }
 
 .btn-tinted-pill:active {
   background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.95);
 }
 
 .btn-gray-pill {
-  background: rgba(142, 142, 147, 0.24); /* System Gray Fill */
+  background: rgba(142, 142, 147, 0.24);
   color: var(--ios-blue);
   font-weight: 600;
   font-size: 14px;
@@ -194,6 +178,11 @@ h2 {
   border-radius: 16px;
   border: none;
   cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-gray-pill:active {
+    opacity: 0.7;
 }
 
 /* --- STATUS CHIPS --- */
@@ -213,27 +202,29 @@ h2 {
 
 /* --- TAPPING COIN (Enhanced) --- */
 .tap-coin {
-    width: 220px;
-    height: 220px;
-    margin: 32px auto;
+    width: 240px; /* Increased size for easier tapping */
+    height: 240px;
+    margin: 24px auto;
     border-radius: 50%;
-    /* Complex Gradient: Gold to Orange with inner glow */
+    /* Complex Gradient */
     background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 20%),
                 linear-gradient(135deg, #FFD60A 0%, #FF9F0A 100%);
     box-shadow:
-        0 16px 40px rgba(255, 159, 10, 0.3), /* Outer Glow */
-        inset 0 4px 12px rgba(255, 255, 255, 0.5), /* Top Highlight */
-        inset 0 -8px 20px rgba(0, 0, 0, 0.15); /* Bottom Shade */
+        0 16px 40px rgba(255, 159, 10, 0.3),
+        inset 0 4px 12px rgba(255, 255, 255, 0.5),
+        inset 0 -8px 20px rgba(0, 0, 0, 0.15);
 
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    /* Spring physics for tap */
-    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s;
+    /* Spring physics for tap - Fix: faster response */
+    transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.1s;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     position: relative;
+    /* Ensure z-index is correct */
+    z-index: 10;
 }
 
 .tap-coin::before {
@@ -251,15 +242,15 @@ h2 {
 }
 
 .tap-coin:active {
-    transform: scale(0.94);
+    transform: scale(0.92); /* Deeper press */
     box-shadow:
         0 4px 16px rgba(255, 159, 10, 0.2),
         inset 0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
 .coin-inner {
-    width: 170px;
-    height: 170px;
+    width: 180px; /* Adjusted ratio */
+    height: 180px;
     border-radius: 50%;
     background: linear-gradient(135deg, #FF9F0A 0%, #D48806 100%);
     display: flex;
@@ -267,16 +258,17 @@ h2 {
     justify-content: center;
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+    pointer-events: none; /* Let clicks pass to parent */
 }
 
 /* --- ENERGY & XP BARS (Rounded & Smooth) --- */
 .energy-container, .xp-container {
-    background: rgba(142, 142, 147, 0.15); /* Track Color */
-    height: 10px; /* Thicker bars */
-    border-radius: 10px; /* Fully rounded caps */
+    background: rgba(142, 142, 147, 0.15);
+    height: 8px; /* Slightly thinner for elegance */
+    border-radius: 8px;
     overflow: hidden;
     position: relative;
-    margin: 16px auto; /* Slightly more spacing */
+    margin: 16px auto;
     max-width: 320px;
 }
 
@@ -292,18 +284,16 @@ h2 {
 
 .progress-bar-fill, .xp-bar-fill {
     height: 100%;
-    border-radius: 10px;
+    border-radius: 8px;
     transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .progress-bar-fill {
-    /* Apple Green Gradient */
     background: linear-gradient(90deg, #30D158, #28cd41);
     box-shadow: 0 0 12px rgba(48, 209, 88, 0.4);
 }
 
 .xp-bar-fill {
-    /* Apple Blue Gradient */
     background: linear-gradient(90deg, #0A84FF, #007AFF);
     box-shadow: 0 0 12px rgba(10, 132, 255, 0.4);
 }
@@ -317,6 +307,8 @@ h2 {
 .card.boost-card {
     /* Override specific boost card style to match new system */
     background: linear-gradient(135deg, rgba(28, 28, 30, 0.8), rgba(44, 44, 46, 0.8));
+    /* Fix: Ensure pointer events work */
+    pointer-events: auto;
 }
 
 /* Shimmer Overlay */
@@ -334,18 +326,17 @@ h2 {
         transparent
     );
     transform: translateX(-150%);
-    animation: shimmer 3s infinite; /* Slower, more elegant */
-    pointer-events: none;
+    animation: shimmer 3s infinite;
+    pointer-events: none; /* CRITICAL: Ensure clicks pass through overlay */
 }
 
 /* --- PARTICLES --- */
 .particle {
     position: fixed;
-    pointer-events: none;
-    /* Use CSS variable for color if possible, else default */
+    pointer-events: none; /* CRITICAL */
     background: radial-gradient(circle, #fff, var(--ios-blue));
     border-radius: 50%;
-    width: 10px; /* Slightly larger */
+    width: 10px;
     height: 10px;
     z-index: 9999;
     opacity: 0;
@@ -362,38 +353,65 @@ h2 {
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.4);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 2000;
     display: flex;
-    align-items: center; /* Center for now, could be bottom sheet */
+    align-items: flex-end; /* Bottom Sheet style */
     justify-content: center;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s;
+    padding-bottom: 32px; /* Bottom spacing */
 }
 
 .success-card {
     background: rgba(28, 28, 30, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 28px; /* Larger radius */
-    padding: 32px;
+    border-radius: 28px;
+    padding: 24px 32px;
     text-align: center;
-    transform: scale(0.9);
+    transform: translateY(100%); /* Slide up */
     transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-    min-width: 240px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
+    min-width: 300px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.success-icon {
+    font-size: 32px;
+    margin-bottom: 0; /* Inline layout */
 }
 
 .burst-text {
     font-size: 32px;
-    font-weight: 800; /* Heavy weight */
+    font-weight: 800;
     color: #fff;
     text-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    animation: floatUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    animation: floatUp 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
     letter-spacing: -0.02em;
+    pointer-events: none; /* CRITICAL */
 }
 
 @keyframes floatUp {
     0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-    20% { transform: translate(-50%, -100%) scale(1.1); opacity: 1; }
-    100% { transform: translate(-50%, -250%) scale(1); opacity: 0; }
+    20% { transform: translate(-50%, -120%) scale(1.1); opacity: 1; }
+    100% { transform: translate(-50%, -200%) scale(0.9); opacity: 0; }
+}
+
+/* --- LEVEL BADGE --- */
+.level-badge {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px 14px;
+    border-radius: 20px; /* Pill shape */
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }

@@ -34,7 +34,8 @@ def verify_design():
             # Screenshot 2: Shop (List Group Style)
             print("2. Navigating to Shop...")
             page.click("a[href='#/shop']")
-            page.wait_for_selector(".boost-card")
+            # We changed boost-card to .list-item in app.js, so wait for that
+            page.wait_for_selector("#shop-list .list-item")
             page.wait_for_timeout(500)
 
             page.screenshot(path="design_verification_shop.png")

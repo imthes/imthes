@@ -151,22 +151,20 @@ class DataAdapter {
           state.xp += rewardXp;
           state.balance += rewardCoins;
 
-          // Module 1: Check Level Up (Simplified Thresholds)
-          // 1->50, 2->250, 3->500, 4->600, 5->650, 10->1050
           const thresholds = [
               {xp: 50, lvl: 1, reward: 5},
               {xp: 250, lvl: 2, reward: 1},
               {xp: 500, lvl: 3, reward: 1},
               {xp: 600, lvl: 4, reward: 1},
               {xp: 650, lvl: 5, reward: 10},
-              {xp: 1050, lvl: 10, reward: 100}, // Big jump for demo
+              {xp: 1050, lvl: 10, reward: 100},
           ];
 
           let newLevel = state.level;
           for (let t of thresholds) {
               if (state.xp >= t.xp && state.level < t.lvl) {
                   newLevel = t.lvl;
-                  state.balance += t.reward; // Level Up Reward
+                  state.balance += t.reward;
                   showSuccessModal(`Level Up! Lvl ${newLevel}`);
               }
           }
@@ -309,8 +307,9 @@ function handleTap(e) {
 
         triggerTapAnimation(e, gain);
 
+        // Use proper haptics if available
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-             window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+             window.Telegram.WebApp.HapticFeedback.impactOccurred('medium'); // Heavier tap
         }
 
         adapter.saveLocalState(currentState);
@@ -353,7 +352,6 @@ function render() {
   const xpBar = document.getElementById('xp-bar-fill');
   const xpText = document.getElementById('xp-text');
   if (xpBar && xpText) {
-      // Simple visual: XP / NextLevelXP
       let target = 50;
       if (currentState.level >= 1) target = 250;
       if (currentState.level >= 2) target = 500;
@@ -430,24 +428,28 @@ function render() {
           const owned = (currentState.boosts.inventory || []).includes(item.id);
 
           const div = document.createElement('div');
-          div.className = 'card boost-card';
-          div.style.marginBottom = '12px';
-          div.style.padding = '16px';
-          div.style.display = 'flex';
-          div.style.alignItems = 'center';
-          div.style.justifyContent = 'space-between';
+          // Important: use new 'list-item' class for grouped style, but wrap in card if needed?
+          // Actually, 'card' + 'list-group' style.
+          // Let's stick to 'list-item' structure inside the parent 'shop-list' which is a 'list-group' in HTML?
+          // Wait, 'shop-list' is id. We need to style individual items as list items.
+
+          // Re-structure: Shop List container should be .list-group
+          // Items should be .list-item
+
+          div.className = 'list-item'; // Changed from 'card boost-card'
+          // We need custom content inside list item
 
           div.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div class="boost-icon-wrapper">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                <div class="boost-icon-wrapper" style="width: 36px; height: 36px; font-size: 18px;">
                     ${getIcon(item.icon)}
                 </div>
-                <div>
-                    <h4 style="margin: 0; font-size: 17px; font-weight: 600;">${item.name}</h4>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${item.desc}</div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0; font-size: 16px; font-weight: 500;">${item.name}</h4>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">${item.desc}</div>
                 </div>
             </div>
-            <button class="btn-tinted-pill" style="height: 32px; font-size: 13px; padding: 0 12px; border-radius: 16px;">
+            <button class="btn-gray-pill" style="margin-left: 12px; min-width: 80px;">
                 ${owned ? 'Active' : item.price + ' TGM'}
             </button>
           `;
@@ -455,23 +457,20 @@ function render() {
           const btn = div.querySelector('button');
           if (owned) {
               btn.disabled = true;
-              btn.style.opacity = '0.5';
-              btn.style.background = 'transparent';
-              btn.style.border = '1px solid var(--success-color)';
-              btn.style.color = 'var(--success-color)';
               btn.textContent = 'Owned';
-
+              btn.style.color = 'var(--text-tertiary)';
               if (item.id === 'item_premium') {
                    btn.textContent = 'Premium';
-                   div.style.border = '1px solid #FFD60A';
+                   btn.style.color = '#FFD60A';
               }
           } else {
               btn.onclick = async () => {
                   if (currentState.balance >= item.price) {
-                      btn.textContent = 'Buying...';
+                      btn.textContent = '...';
                       currentState = await adapter.shopBuy(item.id);
                       render();
                   } else {
+                      // Shake animation on button
                       btn.style.animation = 'shake 0.3s';
                       setTimeout(() => btn.style.animation = '', 300);
                   }
@@ -482,12 +481,6 @@ function render() {
   }
 
   // TASKS LIST (Dynamic)
-  // Module 1: XP / TGM Rewards
-  // Chat: +13 XP
-  // Invite: +250 XP + 100 TGM (Module 4)
-  // Lottery: +100 XP
-  // NFT: +250 XP
-  // Daily: +50 XP (Level 1 req) + 5 TGM (Level 1 reward)
   const taskList = document.querySelector('#tasks .list-group');
   if (taskList) {
       taskList.innerHTML = '';
@@ -518,7 +511,7 @@ function render() {
           if (isDone) {
               btn.disabled = true;
               btn.style.background = 'transparent';
-              btn.style.color = 'var(--text-secondary)';
+              btn.textContent = 'Completed';
           } else {
               btn.onclick = () => {
                   handleTaskClaim(t.id, t.reward_xp, t.reward_coin);
@@ -528,14 +521,14 @@ function render() {
       });
   }
 
-  // FRIENDS UI Update (Module 4)
+  // FRIENDS UI Update
   const friendsView = document.getElementById('friends');
   if (friendsView) {
       const p = friendsView.querySelector('.item-price');
       if (p) p.textContent = "Invite friends to earn +100 TGM per invite plus 10% commission on their mining!";
   }
 
-  // MINER UI Update (Module 2)
+  // MINER UI Update
   const minerInfo = document.querySelector('#miner-status')?.parentElement?.querySelector('.item-price');
   if (minerInfo) {
       minerInfo.textContent = "Passive income (x10 in Sponsor Chat)";
@@ -569,14 +562,14 @@ function triggerTapAnimation(event, amount) {
     floatText.style.top = y + 'px';
     floatText.style.pointerEvents = 'none';
     floatText.style.zIndex = '9999';
-    floatText.style.fontSize = '32px';
+    floatText.style.fontSize = '48px'; // Larger
 
     document.body.appendChild(floatText);
-    setTimeout(() => floatText.remove(), 1000);
+    setTimeout(() => floatText.remove(), 800);
 }
 
 function triggerBoostAnimation(amount) {
-    const burstCount = 12;
+    const burstCount = 16; // More particles
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
 
@@ -584,30 +577,20 @@ function triggerBoostAnimation(amount) {
         const p = document.createElement('div');
         p.className = 'particle';
         const angle = (Math.random() * 360) * (Math.PI / 180);
-        const dist = 50 + Math.random() * 100;
+        const dist = 60 + Math.random() * 120; // Larger spread
         const tx = Math.cos(angle) * dist + 'px';
         const ty = Math.sin(angle) * dist + 'px';
         p.style.setProperty('--tx', tx);
         p.style.setProperty('--ty', ty);
         p.style.left = centerX + 'px';
         p.style.top = centerY + 'px';
-        p.style.animation = `flyOut 0.8s ease-out forwards`;
+        p.style.animation = `flyOut 1s ease-out forwards`;
         document.body.appendChild(p);
-        setTimeout(() => p.remove(), 800);
+        setTimeout(() => p.remove(), 1000);
     }
 
     if (amount) {
-        const floatText = document.createElement('div');
-        floatText.className = 'burst-text';
-        floatText.textContent = typeof amount === 'number' ? `+${amount}` : amount;
-        floatText.style.position = 'fixed';
-        floatText.style.top = '50%';
-        floatText.style.left = '50%';
-        floatText.style.transform = 'translate(-50%, -50%)';
-        floatText.style.pointerEvents = 'none';
-        floatText.style.zIndex = '9999';
-        document.body.appendChild(floatText);
-        setTimeout(() => floatText.remove(), 1500);
+        showSuccessModal(amount); // Use modal for big events
     }
 }
 
@@ -618,9 +601,11 @@ function showSuccessModal(message) {
         overlay.className = 'success-overlay';
         overlay.innerHTML = `
             <div class="success-card">
-                <div class="success-icon">✅</div>
-                <h3 style="margin-bottom: 8px; font-size: 20px;">Success</h3>
-                <p style="color: var(--text-secondary); margin: 0;">${message}</p>
+                <div class="success-icon">🎉</div>
+                <div style="text-align: left;">
+                    <h3 style="margin: 0; font-size: 17px; font-weight: 600;">Success</h3>
+                    <p style="color: var(--text-secondary); margin: 0; font-size: 15px;">${message}</p>
+                </div>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -630,10 +615,11 @@ function showSuccessModal(message) {
     overlay.style.opacity = '1';
     overlay.style.pointerEvents = 'auto';
     const card = overlay.querySelector('.success-card');
-    card.style.transform = 'scale(1)';
+    card.style.transform = 'translateY(0)'; // Slide up to view
+
     setTimeout(() => {
+        card.style.transform = 'translateY(100%)';
         overlay.style.opacity = '0';
         overlay.style.pointerEvents = 'none';
-        card.style.transform = 'scale(0.8)';
-    }, 2000);
+    }, 2500);
 }
