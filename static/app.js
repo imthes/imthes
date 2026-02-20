@@ -629,10 +629,18 @@ function render() {
 
 // Helper: Icons (SF Symbols approximation)
 function getIcon(name) {
-    if (name === 'bolt') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #FFD60A"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>';
-    if (name === 'battery') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #32D74B"><rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect><line x1="23" y1="13" x2="23" y2="11"></line></svg>';
-    if (name === 'hand.tap') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0A84FF"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>';
-    if (name === 'crown') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #FFD60A"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v2H5z"></path></svg>';
+    // Bolt.fill
+    if (name === 'bolt') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #FFD60A"><path d="M12.75 2a.75.75 0 0 0-.75.75v6.5h-5.5a.75.75 0 0 0-.6.4.75.75 0 0 0 .1.8l7 10.5a.75.75 0 0 0 1.35-.45v-6.5h5.5a.75.75 0 0 0 .6-.4.75.75 0 0 0-.1-.8l-7-10.5a.75.75 0 0 0-.6-.4z"/></svg>';
+
+    // Battery.100
+    if (name === 'battery') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #32D74B"><rect x="3" y="7" width="16" height="10" rx="2.5" ry="2.5" stroke="currentColor"/><path d="M21 10.5v3" stroke="currentColor" stroke-linecap="round"/><rect x="5.5" y="9.5" width="11" height="5" rx="1" fill="currentColor"/></svg>';
+
+    // Hand.tap.fill
+    if (name === 'hand.tap') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #0A84FF"><path d="M11.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path fill-rule="evenodd" d="M16 11V6a3 3 0 1 0-6 0v.5a1 1 0 0 1-2 0V6a5 5 0 0 1 10 0v5h.5a2.5 2.5 0 0 1 2.5 2.5v4.322c0 2.22-1.28 4.259-3.321 5.291l-.106.054c-1.895.955-4.148.868-5.968-.23l-3.386-2.043a2.5 2.5 0 0 1 .94-4.73l.841.24V11z"/></svg>';
+
+    // Crown.fill
+    if (name === 'crown') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #FFD60A"><path d="M11.968 1.956a1.503 1.503 0 0 0-1.936 0l-2.6 2.37-3.418-1.52A1.5 1.5 0 0 0 2 4.296v14.208a1.5 1.5 0 0 0 1.5 1.5h17a1.5 1.5 0 0 0 1.5-1.5V4.296a1.5 1.5 0 0 0-2.014-1.49l-3.418 1.52-2.6-2.37z"/></svg>';
+
     return '📦';
 }
 
